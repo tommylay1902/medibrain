@@ -3,7 +3,7 @@ package api
 import (
 	"net/http"
 
-	"github.com/tommylay1902/medibrain/api/domain/documentmeta"
+	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
 )
 
 type Mux struct {
