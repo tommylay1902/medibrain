@@ -17,14 +17,14 @@ var DocumentMetaSchema = `CREATE TABLE document_meta(
 	)`
 
 type DocumentMeta struct {
-	ID                   *uuid.UUID `json:"id"`
-	Fid                  *uint32    `json:"fid"`
-	DateUserUploaded     time.Time  `json:"date_user_uploaded"`
-	DateDocumentUploaded time.Time  `json:"date_document_uploaded"`
+	ID                   *uuid.UUID `json:"id" db:"id"`
+	Fid                  *uint32    `json:"fid" db:"fid"`
+	DateUserUploaded     time.Time  `json:"date_user_uploaded" db:"date_user_uploaded" `
+	DateDocumentUploaded time.Time  `json:"date_document_uploaded" db:"date_document_uploaded"`
 	// Tags                 []string   `json:"tags"`
-	Title   string `json:"title"`
-	Author  string `json:"author"`
-	Subject string `json:"subject"`
+	Title   string `json:"title" db:"title"`
+	Author  string `json:"author" db:"author"`
+	Subject string `json:"subject" db:"subject"`
 	// RelatedTo
 }
 

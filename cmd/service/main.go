@@ -7,8 +7,7 @@ import (
 
 func main() {
 	db := database.NewDB()
-	database.CreateSchema(db)
-	mux := api.NewMux()
+	mux := api.NewMux(db)
 
 	server := api.NewServer(":8080", mux)
 	server.StartServer()
