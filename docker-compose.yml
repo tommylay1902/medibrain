@@ -1,4 +1,28 @@
 services:
+  file-storage-master:
+    image: chrislusf/seaweedfs:latest
+    ports:
+      - "9333:9333"
+    command: "master -ip=file-storage-master -port=9333 -mdir=/data"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9333/cluster/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - master_data:/data
+  file-storage-volume:
+    image: chrislusf/seaweedfs:latest
+    ports:
+      - "9000:9000"
+    command: "volume -dir=/data -port=9000 -ip=file-storage-volume -mserver=file-storage-master:9333"
+    depends_on:
+      file-storage-master:
+        condition: service_healthy
+    volumes:
+      - volume_data:/data
+
   pdf:
     image: stirlingtools/stirling-pdf:1.6.0
     ports:
@@ -24,6 +48,8 @@ services:
       - app-network
 
 volumes:
+  master_data:
+  volume_data:
   db_data:
 
 # Optional but recommended
