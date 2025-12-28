@@ -18,7 +18,6 @@ func NewHandler(db *sqlx.DB) *Handler {
 }
 
 func (h *Handler) List(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
 	pdfs, err := h.repo.List()
 	if err != nil {
 		fmt.Println("error getting pdfs list")
@@ -40,4 +39,21 @@ func (h *Handler) List(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(500)
 		return
 	}
+}
+
+//
+// func (h *Handler) GetDocumentMetaData(w http.ResponseWriter, req *http.Request) {
+// 	req.Body = http.MaxBytesReader(w, req.Body, int64(10<<20))
+// 	err := req.ParseMultipartForm(int64(10 << 20))
+// 	if err != nil {
+// 		fmt.Println("error parsing multipartform")
+// 		return
+// 	}
+//
+// 	file, handler, err := req.FormFile("inputFile")
+// 	defer file.Close()
+// 	file.Read()
+// }
+
+func (h *Handler) CreateDocumentMeta(w http.ResponseWriter, req *http.Request) {
 }
