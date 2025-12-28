@@ -15,7 +15,7 @@ func NewRoutes(db *sqlx.DB) *Route {
 	handler := NewHandler(db)
 
 	mux.HandleFunc("GET /documentmeta", handler.List)
-	mux.HandleFunc("POST /documentmeta", handler.GetDocumentMetaData)
+	// mux.HandleFunc("POST /documentmeta", handler.GetDocumentMetaData)
 	route := &Route{
 		Mux: mux,
 	}
