@@ -3,7 +3,11 @@ services:
     image: chrislusf/seaweedfs:latest
     ports:
       - "9333:9333"
-    command: "master -ip=file-storage-master -port=9333 -mdir=/data"
+    hostname: seaweedfs_master
+    command: "master -ip=seaweedfs_master -port=9333 -mdir=/data"
+    restart: unless-stopped
+    environment:
+      - PUBLIC_URL=http://localhost:9333
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9333/cluster/status"]
       interval: 10s
@@ -16,15 +20,19 @@ services:
     image: chrislusf/seaweedfs:latest
     ports:
       - "9000:9000"
-    command: "volume -dir=/data -port=9000 -ip=file-storage-volume -mserver=file-storage-master:9333"
+    environment:
+      - PUBLIC_URL=http:localhost:9000
+    hostname: seaweedfs_volume
+    command: "volume -dir=/data -publicUrl=localhost:9000 -port=9000 -ip=seaweedfs_volume -mserver=seaweedfs_master:9333"
+    restart: unless-stopped
     depends_on:
       file-storage-master:
         condition: service_healthy
     volumes:
       - volume_data:/data
-
   pdf:
     image: stirlingtools/stirling-pdf:1.6.0
+    restart: unless-stopped
     ports:
       - "3000:8080"
   db:
