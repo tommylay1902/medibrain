@@ -2,17 +2,15 @@ package documentmeta
 
 import (
 	"net/http"
-
-	"github.com/jmoiron/sqlx"
 )
 
 type Route struct {
 	Mux *http.ServeMux
 }
 
-func NewRoutes(db *sqlx.DB) *Route {
+func NewRoutes(dms *DocumentMetaService) *Route {
 	mux := http.NewServeMux()
-	handler := NewHandler(db)
+	handler := NewHandler(dms)
 
 	mux.HandleFunc("GET /documentmeta", handler.List)
 	// mux.HandleFunc("POST /documentmeta", handler.GetDocumentMetaData)

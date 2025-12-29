@@ -3,7 +3,6 @@ package api
 import (
 	"net/http"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
 )
 
@@ -17,8 +16,8 @@ type Mux struct {
 // routes are then initialized here and mounted under the "/api/v1/" prefix.
 //
 // Returns the configured main router with all routes ready for server use.
-func NewMux(db *sqlx.DB) *Mux {
-	documentMetaMux := documentmeta.NewRoutes(db)
+func NewMux(dms *documentmeta.DocumentMetaService) *Mux {
+	documentMetaMux := documentmeta.NewRoutes(dms)
 
 	mainMux := http.NewServeMux()
 	mainMux.Handle("/api/v1/", http.StripPrefix("/api/v1", documentMetaMux.Mux))

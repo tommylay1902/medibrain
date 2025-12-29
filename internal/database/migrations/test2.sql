@@ -2,8 +2,8 @@
 CREATE TABLE document_meta(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	fid BIGINT,
-	date_user_uploaded TIMESTAMP,
-	date_document_uploaded TIMESTAMP,
+	upload_date TIMESTAMP,
+	creation_date TIMESTAMP,
 	title TEXT, 
 	author TEXT,
 	subject TEXT
