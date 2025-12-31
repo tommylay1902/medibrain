@@ -2,7 +2,6 @@ package stirling
 
 import (
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -18,11 +17,22 @@ func NewClient() *StirlingClient {
 	}
 }
 
-// ForwardRequest forwards the entire HTTP request to Stirling
-func (sc *StirlingClient) ForwardRequest(req *http.Request) (*http.Response, error) {
-	// Build Stirling URL
+func (sc *StirlingClient) GetMetaData(req *http.Request) (*http.Response, error) {
 	stirlingURL := fmt.Sprintf("%s/api/v1/analysis/document-properties", sc.BaseURL)
-	// Create a new request to forward to Stirling
+	return sc.forwardReq(req, stirlingURL)
+}
+
+func (sc *StirlingClient) UpdateMetaData(req *http.Request) (*http.Response, error) {
+	stirlingURL := fmt.Sprintf("%s/api/v1/misc/update-metadata", sc.BaseURL)
+	return sc.forwardReq(req, stirlingURL)
+}
+
+func (sc *StirlingClient) OCRProcessing(req *http.Request) (*http.Response, error) {
+	stirlingURL := fmt.Sprintf("%s/api/v1/misc/ocr-pdf", sc.BaseURL)
+	return sc.forwardReq(req, stirlingURL)
+}
+
+func (sc *StirlingClient) forwardReq(req *http.Request, stirlingURL string) (*http.Response, error) {
 	forwardReq, err := http.NewRequest(req.Method, stirlingURL, req.Body)
 	if err != nil {
 		return nil, fmt.Errorf("creating forward request: %w", err)
@@ -39,11 +49,5 @@ func (sc *StirlingClient) ForwardRequest(req *http.Request) (*http.Response, err
 	if err != nil {
 		return nil, fmt.Errorf("forwarding request: %w", err)
 	}
-	defer resp.Body.Close()
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("err reading body")
-	}
-	fmt.Println(string(b))
 	return resp, nil
 }

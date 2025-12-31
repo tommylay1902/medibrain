@@ -1,9 +1,10 @@
 package seaweedclient
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/tommylay1902/medibrain/internal/api/util"
 )
 
 func NewClient() *SeaWeedClient {
@@ -20,19 +21,12 @@ func (swc *SeaWeedClient) Assign() (*AssignResponse, error) {
 		fmt.Println("error trying to get fid")
 		return nil, err
 	}
-
-	defer func() {
-		closeErr := resp.Body.Close()
-		if closeErr != nil && err == nil {
-			// Only return the close error if no other error occurred
-			err = fmt.Errorf("closing response body: %w", closeErr)
-		}
-	}()
-
 	var result AssignResponse
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, fmt.Errorf("decoding response: %w", err)
-	}
 
+	err = util.Bind(&result, resp)
+	if err != nil {
+		fmt.Println("error binding Assign seaweed response to AssignRespones struct")
+		return nil, err
+	}
 	return &result, nil
 }
