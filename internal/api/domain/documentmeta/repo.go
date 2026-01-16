@@ -28,7 +28,6 @@ func (dmr *DocumentMetaRepo) List() (DocumentMetaList, error) {
 func (dmr *DocumentMetaRepo) Create(meta *DocumentMeta) error {
 	_, err := dmr.db.NamedQuery("INSERT INTO document_meta(title, author, subject) VALUES(:title, :author, :subject)", meta)
 	if err != nil {
-
 		fmt.Println("error ")
 		return err
 	}

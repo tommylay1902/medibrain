@@ -1,6 +1,7 @@
 package documentpipeline
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -16,13 +17,15 @@ func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
 }
 
 func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter, req *http.Request) {
-	response, err := dph.service.UploadDocumentPipeline2(req)
-	// err dph.service.UploadDocumentPipeline(req.Body)
+	response, err := dph.service.UploadDocumentPipeline(req)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error uploading document: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
 		return
 	}
-	fmt.Println(response)
-	// w.WriteHeader(http.StatusOK)
-	// w.Write([]byte("File uploaded successfully"))
+	w.Header().Set("Content-Type", "application/json")
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
+		return
+	}
 }

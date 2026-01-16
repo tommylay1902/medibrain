@@ -2,10 +2,14 @@ package stirling
 
 import (
 	"bytes"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
+
+	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
 )
 
 type StirlingClient struct {
@@ -20,7 +24,7 @@ func NewClient() *StirlingClient {
 	}
 }
 
-func (sc *StirlingClient) GetMetaData2(pdfBytes []byte, header *multipart.FileHeader) (*http.Response, error) {
+func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader) (*documentmeta.DocumentMeta, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -39,9 +43,7 @@ func (sc *StirlingClient) GetMetaData2(pdfBytes []byte, header *multipart.FileHe
 		return nil, fmt.Errorf("close writer error: %v", err)
 	}
 
-	boundary := writer.Boundary()
-	fmt.Printf("Multipart boundary: %s\n", boundary)
-	fmt.Printf("Content-Type will be: multipart/form-data; boundary=%s\n", boundary)
+	writer.Boundary()
 
 	req, err := http.NewRequest("POST",
 		fmt.Sprintf("%s/api/v1/analysis/document-properties", sc.BaseURL),
@@ -59,21 +61,22 @@ func (sc *StirlingClient) GetMetaData2(pdfBytes []byte, header *multipart.FileHe
 	}
 
 	defer resp.Body.Close()
-	respBody, _ := io.ReadAll(resp.Body)
-	fmt.Printf("Status: %d, Response: %s\n", resp.StatusCode, string(respBody))
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
-	return &http.Response{
-		Status:        resp.Status,
-		StatusCode:    resp.StatusCode,
-		Header:        resp.Header,
-		Body:          io.NopCloser(bytes.NewReader(respBody)),
-		ContentLength: int64(len(respBody)),
-	}, nil
-}
+	if resp.StatusCode != 200 {
+		return nil, errors.New("not expected status code")
+	}
 
-func (sc *StirlingClient) GetMetaData(req *http.Request) (*http.Response, error) {
-	stirlingURL := fmt.Sprintf("%s/api/v1/analysis/document-properties", sc.BaseURL)
-	return sc.forwardReq(req, stirlingURL)
+	var dm documentmeta.DocumentMeta
+	err = json.Unmarshal(respBody, &dm)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dm, nil
 }
 
 func (sc *StirlingClient) UpdateMetaData(req *http.Request) (*http.Response, error) {
