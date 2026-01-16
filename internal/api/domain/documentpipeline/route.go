@@ -10,7 +10,7 @@ func NewRoutes(dps *DocumentPipelineService) *Route {
 	mux := http.NewServeMux()
 	handler := NewHandler(dps)
 
-	mux.HandleFunc("POST /documentpipeline/upload", handler.UploadDocumentPipeline)
+	mux.HandleFunc("POST /upload", handler.UploadDocumentPipeline)
 	// mux.HandleFunc("POST /documentmeta", handler.GetDocumentMetaData)
 	route := &Route{
 		Mux: mux,

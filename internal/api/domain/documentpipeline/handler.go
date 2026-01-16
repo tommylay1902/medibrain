@@ -16,13 +16,13 @@ func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
 }
 
 func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter, req *http.Request) {
-	err := dph.service.UploadDocumentPipeline(req)
+	response, err := dph.service.UploadDocumentPipeline2(req)
 	// err dph.service.UploadDocumentPipeline(req.Body)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error uploading document: %v", err), http.StatusInternalServerError)
 		return
 	}
-
+	fmt.Println(response)
 	// w.WriteHeader(http.StatusOK)
 	// w.Write([]byte("File uploaded successfully"))
 }

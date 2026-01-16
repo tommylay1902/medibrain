@@ -2,6 +2,7 @@ package documentpipeline
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
@@ -45,7 +46,7 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) er
 		return err
 	}
 
-	err = dps.dms.Create(metadata)
+	err = dps.dms.Create(&metadata)
 	if err != nil {
 		fmt.Println("error creating metadata in uploaddocumentpipeline")
 		return err
@@ -59,4 +60,28 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) er
 	fmt.Println(res)
 	// _, err = dps.stirlingClient.OCRProcessing(req)
 	return nil
+}
+
+func (dps *DocumentPipelineService) UploadDocumentPipeline2(req *http.Request) (*http.Response, error) {
+	err := req.ParseMultipartForm(10 << 20)
+	if err != nil {
+		return nil, err
+	}
+	file, header, err := req.FormFile("fileInput")
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+	pdfBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := dps.stirlingClient.GetMetaData2(pdfBytes, header)
+	if err != nil {
+		return nil, err
+	}
+
+	return response, nil
 }
