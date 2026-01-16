@@ -4,9 +4,10 @@ import (
 	"github.com/google/uuid"
 )
 
-var DocumentMetaSchema = `CREATE TABLE document_meta(
+var DocumentMetaSchema = `
+	CREATE TABLE document_meta(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	fid BIGINT,
+	fid TEXT,
 	upload_date TIMESTAMP,
 	creation_date TIMESTAMP,
 	title TEXT, 

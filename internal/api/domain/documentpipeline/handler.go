@@ -28,4 +28,5 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
 		return
 	}
+	w.WriteHeader(201)
 }

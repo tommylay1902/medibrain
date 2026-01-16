@@ -14,9 +14,10 @@ func main() {
 	dmr := documentmeta.NewRepo(db)
 	dms := documentmeta.NewService(dmr)
 
+	database.CreateSchema(db)
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()
-	dps := documentpipeline.NewService(swc, sc, dms)
+	dps := documentpipeline.NewService(dmr, swc, sc, dms)
 	mux := api.NewMux(dms, dps)
 	server := api.NewServer(":8080", mux)
 	server.StartServer()

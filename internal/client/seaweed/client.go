@@ -56,9 +56,7 @@ func (swc *SeaWeedClient) StoreFile(publicURL string, fid string, pdfBytes []byt
 		return fmt.Errorf("close writer error: %v", err)
 	}
 
-	boundary := writer.Boundary()
-	fmt.Printf("Multipart boundary: %s\n", boundary)
-	fmt.Printf("Content-Type will be: multipart/form-data; boundary=%s\n", boundary)
+	writer.Boundary()
 
 	req, err := http.NewRequest("POST", url, body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())

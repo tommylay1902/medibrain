@@ -1,6 +1,7 @@
 package documentpipeline
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
@@ -10,20 +11,20 @@ import (
 )
 
 type DocumentPipelineService struct {
-	// repo           *DocumentPipelineRepo
+	dmRepo         *documentmeta.DocumentMetaRepo
 	stirlingClient *stirling.StirlingClient
 	seaweedClient  *seaweedclient.SeaWeedClient
 	dms            *documentmeta.DocumentMetaService
 }
 
 func NewService(
-	// repo *DocumentPipelineRepo
+	dmRepo *documentmeta.DocumentMetaRepo,
 	seaweedClient *seaweedclient.SeaWeedClient,
 	stirlingClient *stirling.StirlingClient,
 	dms *documentmeta.DocumentMetaService,
 ) *DocumentPipelineService {
 	return &DocumentPipelineService{
-		// repo: repo,
+		dmRepo:         dmRepo,
 		seaweedClient:  seaweedClient,
 		stirlingClient: stirlingClient,
 		dms:            dms,
@@ -56,9 +57,15 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*
 		return nil, err
 	}
 	dm.Fid = assignRes.Fid
+	fmt.Println(dm)
 	err = dps.seaweedClient.StoreFile(assignRes.PublicURL, assignRes.Fid, pdfBytes, header)
 	if err != nil {
 		return nil, err
 	}
+	err = dps.dmRepo.Create(dm)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println(dm.Fid)
 	return dm, nil
 }

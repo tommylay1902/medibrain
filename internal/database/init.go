@@ -21,7 +21,7 @@ func NewDB() *sqlx.DB {
 }
 
 func CreateSchema(db *sqlx.DB) {
-	sql, err := os.ReadFile("internal/database/migrations/test2.sql")
+	sql, err := os.ReadFile("internal/database/migrations/schemas.sql")
 	if err != nil {
 		fmt.Println(err)
 		panic(err)
