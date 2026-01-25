@@ -29,6 +29,7 @@ func (h *Handler) List(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(200)
+
 	_, err = w.Write(result)
 	w.Header().Set("Content-Type", "application/json")
 	if err != nil {

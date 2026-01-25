@@ -22,11 +22,12 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	w.WriteHeader(201)
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
 		return
 	}
-	w.WriteHeader(201)
 }

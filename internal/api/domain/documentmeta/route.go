@@ -12,7 +12,7 @@ func NewRoutes(dms *DocumentMetaService) *Route {
 	mux := http.NewServeMux()
 	handler := NewHandler(dms)
 
-	mux.HandleFunc("GET /documentmeta", handler.List)
+	mux.HandleFunc("GET /", handler.List)
 	// mux.HandleFunc("POST /documentmeta", handler.GetDocumentMetaData)
 	route := &Route{
 		Mux: mux,

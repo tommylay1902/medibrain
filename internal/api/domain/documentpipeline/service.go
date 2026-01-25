@@ -1,7 +1,6 @@
 package documentpipeline
 
 import (
-	"fmt"
 	"io"
 	"net/http"
 
@@ -57,7 +56,6 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*
 		return nil, err
 	}
 	dm.Fid = assignRes.Fid
-	fmt.Println(dm)
 	err = dps.seaweedClient.StoreFile(assignRes.PublicURL, assignRes.Fid, pdfBytes, header)
 	if err != nil {
 		return nil, err
@@ -66,6 +64,6 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println(dm.Fid)
+
 	return dm, nil
 }

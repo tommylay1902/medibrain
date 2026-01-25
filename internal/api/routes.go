@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
 	"github.com/tommylay1902/medibrain/internal/api/domain/documentpipeline"
@@ -28,33 +29,46 @@ func NewMux(dms *documentmeta.DocumentMetaService, dps *documentpipeline.Documen
 	documentPipelineMux := documentpipeline.NewRoutes(dps)
 
 	// Mount with prefixes
-	mountSubrouter(apiV1, "/documentmeta", documentMetaMux.Mux)
-	mountSubrouter(apiV1, "/documentpipeline", documentPipelineMux.Mux)
-
-	mainMux.Handle("/api/v1/",
-		// applyMiddleware(
-		http.StripPrefix("/api/v1", apiV1),
-		// loggingMiddleware,
-		// corsMiddleware,
-
-		// )
-	)
+	mountSubrouter(apiV1, "documentmeta", documentMetaMux.Mux)
+	mountSubrouter(apiV1, "documentpipeline", documentPipelineMux.Mux)
+	apiV1Handler := applyMiddleware(http.StripPrefix("/api/v1", apiV1), CorsMiddleware)
+	mainMux.Handle("/api/v1/", apiV1Handler)
 
 	// mainMux.HandleFunc("/", rootHandler)
 
 	return &Mux{Mux: mainMux}
 }
 
-// func applyMiddleware(h http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
-// 	for i := len(middlewares) - 1; i >= 0; i-- {
-// 		h = middlewares[i](h)
-// 	}
-// 	return h
-// }
+func applyMiddleware(h http.Handler, middlewares ...func(http.Handler) http.Handler) http.Handler {
+	for i := len(middlewares) - 1; i >= 0; i-- {
+		h = middlewares[i](h)
+	}
+	return h
+}
 
 func mountSubrouter(parent *http.ServeMux, prefix string, child *http.ServeMux) {
 	if child == nil {
 		return
 	}
-	parent.Handle(prefix+"/", http.StripPrefix(prefix, child))
+
+	if !strings.HasPrefix(prefix, "/") {
+		prefix = "/" + prefix
+	}
+
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		strippedPath := strings.TrimPrefix(r.URL.Path, prefix)
+		if strippedPath == "" {
+			strippedPath = "/"
+		}
+
+		r2 := *r
+		r2.URL = &(*r.URL)
+		r2.URL.Path = strippedPath
+
+		child.ServeHTTP(w, &r2)
+	})
+
+	parent.Handle(prefix, handler)
+	parent.Handle(prefix+"/", handler) // Also handle with trailing slash
+	parent.Handle(prefix+"/*", handler)
 }
