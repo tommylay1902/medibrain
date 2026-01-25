@@ -19,7 +19,7 @@ func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
 func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter, req *http.Request) {
 	response, err := dph.service.UploadDocumentPipeline(req)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Error uploading document: %v", err), http.StatusInternalServerError)
 		return
 	}
 

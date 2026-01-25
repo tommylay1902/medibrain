@@ -60,7 +60,6 @@ volumes:
   volume_data:
   db_data:
 
-# Optional but recommended
 networks:
   app-network:
     driver: bridge

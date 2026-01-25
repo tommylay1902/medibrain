@@ -40,7 +40,6 @@ func (swc *SeaWeedClient) StoreFile(publicURL string, fid string, pdfBytes []byt
 	url := fmt.Sprintf("http://%s/%s", publicURL, fid)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
-
 	part, err := writer.CreateFormFile("file", header.Filename)
 	if err != nil {
 		return fmt.Errorf("create form file error: %v", err)

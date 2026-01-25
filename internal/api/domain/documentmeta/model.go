@@ -7,7 +7,8 @@ import (
 var DocumentMetaSchema = `
 	CREATE TABLE document_meta(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	fid TEXT,
+	thumbnail_fid TEXT,
+	pdf_fid TEXT,
 	upload_date TIMESTAMP,
 	creation_date TIMESTAMP,
 	title TEXT, 
@@ -16,8 +17,9 @@ var DocumentMetaSchema = `
 	)`
 
 type DocumentMeta struct {
-	ID  *uuid.UUID `json:"id" db:"id"`
-	Fid string     `json:"fid" db:"fid"`
+	ID           *uuid.UUID `json:"id" db:"id"`
+	ThumbnailFid string     `json:"thumbnailFid" db:"thumbnail_fid"`
+	PdfFid       string     `json:"pdfFid" db:"pdf_fid"`
 	// TODO: need to change to time.Time also need to rename UplodaDate -> modificationDate
 	UploadDate   *string `json:"modificationDate" db:"upload_date" `
 	CreationDate *string `json:"creationDate" db:"creation_date"`

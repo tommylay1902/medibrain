@@ -1,6 +1,7 @@
 package documentpipeline
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 
@@ -55,7 +56,7 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
-	dm.Fid = assignRes.Fid
+	dm.PdfFid = assignRes.Fid
 	err = dps.seaweedClient.StoreFile(assignRes.PublicURL, assignRes.Fid, pdfBytes, header)
 	if err != nil {
 		return nil, err
@@ -65,5 +66,20 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*
 		return nil, err
 	}
 
+	thumbnail, err := dps.stirlingClient.GenerateThumbnail(pdfBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	pdfAssign, err := dps.seaweedClient.Assign()
+	if err != nil {
+		return nil, err
+	}
+	dm.ThumbnailFid = pdfAssign.Fid
+	fmt.Println(pdfAssign.Fid)
+	err = dps.seaweedClient.StoreFile(pdfAssign.PublicURL, pdfAssign.Fid, thumbnail, header)
+	if err != nil {
+		return nil, err
+	}
 	return dm, nil
 }
