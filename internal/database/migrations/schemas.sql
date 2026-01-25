@@ -1,7 +1,9 @@
 -- From: ../internal/api/domain/documentmeta/model.go
-CREATE TABLE document_meta(
+
+DROP TABLE IF EXISTS document_meta CASCADE;
+	CREATE TABLE document_meta(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	fid BIGINT,
+	fid TEXT,
 	upload_date TIMESTAMP,
 	creation_date TIMESTAMP,
 	title TEXT, 
@@ -10,7 +12,16 @@ CREATE TABLE document_meta(
 	)
 ;
 
+-- From: ../internal/api/domain/keyword/model.go
+DROP TABLE IF EXISTS keyword CASCADE;
+CREATE TABLE keyword(
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	name TEXT 
+	)
+;
+
 -- From: ../internal/api/domain/tags/model.go
+DROP TABLE IF EXISTS tags CASCADE;
 CREATE TABLE tags(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	name TEXT 

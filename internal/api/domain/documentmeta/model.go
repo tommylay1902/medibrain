@@ -1,30 +1,30 @@
 package documentmeta
 
 import (
-	"time"
-
 	"github.com/google/uuid"
 )
 
-var DocumentMetaSchema = `CREATE TABLE document_meta(
+var DocumentMetaSchema = `
+	CREATE TABLE document_meta(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	fid BIGINT,
-	date_user_uploaded TIMESTAMP,
-	date_document_uploaded TIMESTAMP,
+	fid TEXT,
+	upload_date TIMESTAMP,
+	creation_date TIMESTAMP,
 	title TEXT, 
 	author TEXT,
 	subject TEXT
 	)`
 
 type DocumentMeta struct {
-	ID                   *uuid.UUID `json:"id" db:"id"`
-	Fid                  *uint32    `json:"fid" db:"fid"`
-	DateUserUploaded     time.Time  `json:"date_user_uploaded" db:"date_user_uploaded" `
-	DateDocumentUploaded time.Time  `json:"date_document_uploaded" db:"date_document_uploaded"`
+	ID  *uuid.UUID `json:"id" db:"id"`
+	Fid string     `json:"fid" db:"fid"`
+	// TODO: need to change to time.Time also need to rename UplodaDate -> modificationDate
+	UploadDate   *string `json:"modificationDate" db:"upload_date" `
+	CreationDate *string `json:"creationDate" db:"creation_date"`
 	// Tags                 []string   `json:"tags"`
-	Title   string `json:"title" db:"title"`
-	Author  string `json:"author" db:"author"`
-	Subject string `json:"subject" db:"subject"`
+	Title   *string `json:"title" db:"title"`
+	Author  *string `json:"author" db:"author"`
+	Subject *string `json:"subject" db:"subject"`
 	// RelatedTo
 }
 

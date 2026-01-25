@@ -1,30 +1,20 @@
 #!/bin/bash
 # scripts/extract-schema.sh
 
-# Default values
-MIGRATIONS_DIR="../internal/database/migrations"
-DEFAULT_FILE="schemas.sql"
-OUTPUT_FILE="$MIGRATIONS_DIR/$DEFAULT_FILE"
+# Default output file name
+OUTPUT_FILE="../internal/database/migrations/schemas.sql"
 
 # Parse command-line arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         -o|--output)
-            # Check if user provided full path or just filename
-            if [[ "$2" == */* ]]; then
-                # User provided full path
-                OUTPUT_FILE="$2"
-            else
-                # User provided just filename, prepend migrations dir
-                OUTPUT_FILE="$MIGRATIONS_DIR/$2"
-            fi
+            OUTPUT_FILE="$2"
             shift 2
             ;;
         -h|--help)
             echo "Usage: $0 [-o output_file.sql]"
             echo "Options:"
-            echo "  -o, --output    Specify output file name or path"
-            echo "                  (default: $MIGRATIONS_DIR/schemas.sql)"
+            echo "  -o, --output    Specify output file name (default: schemas.sql)"
             echo "  -h, --help      Show this help message"
             exit 0
             ;;
@@ -36,11 +26,8 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Create migrations directory if it doesn't exist
-mkdir -p "$(dirname "$OUTPUT_FILE")"
-
 # Clear the output file
-> "$OUTPUT_FILE"
+> "../internal/database/$OUTPUT_FILE"
 
 echo "🔍 Searching for schemas..."
 echo "📁 Output file: $OUTPUT_FILE"
@@ -52,11 +39,13 @@ find ../internal/api/domain -name "model.go" | while read FILE; do
     CONTENT=$(cat "$FILE")
     
     # Find everything between backticks after "var.*Schema.*="
+    # Using Perl for multi-line matching
     SQL=$(echo "$CONTENT" | perl -ne '
         if (/var.*[Ss]chema.*=\s*`(.*)/) {
             $in_sql = 1;
             $sql = $1;
             if ($sql =~ /`/) {
+                # Backtick on same line
                 $sql =~ s/`.*//;
                 print $sql;
                 $in_sql = 0;
