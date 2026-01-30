@@ -4,7 +4,7 @@
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	thumbnail_fid TEXT,
 	pdf_fid TEXT,
-	upload_date TIMESTAMP,
+	modification_date TIMESTAMP,
 	creation_date TIMESTAMP,
 	title TEXT, 
 	author TEXT,
@@ -12,15 +12,15 @@
 	)
 ;
 
--- From: ../internal/api/domain/tags/model.go
-CREATE TABLE tags(
+-- From: ../internal/api/domain/keyword/model.go
+CREATE TABLE keyword(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	name TEXT 
 	)
 ;
 
--- From: ../internal/api/domain/keyword/model.go
-CREATE TABLE keyword(
+-- From: ../internal/api/domain/tags/model.go
+CREATE TABLE tags(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 	name TEXT 
 	)

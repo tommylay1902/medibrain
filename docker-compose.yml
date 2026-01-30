@@ -30,13 +30,15 @@ services:
         condition: service_healthy
     volumes:
       - volume_data:/data
-  pdf:
-    image: stirlingtools/stirling-pdf:1.6.0
-    restart: unless-stopped
-    ports:
-      - "3000:8080"
+  # pdf:
+  #   image: stirlingtools/stirling-pdf:1.6.0
+  #   container_name: stirling-pdf
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:8080"
   db:
     image: postgres:16
+    container_name: medibrain-db
     ports:
       - "5432:5432"
     volumes:

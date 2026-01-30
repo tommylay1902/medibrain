@@ -24,7 +24,7 @@ func NewClient() *StirlingClient {
 	}
 }
 
-func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader) (*documentmeta.DocumentMeta, error) {
+func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*documentmeta.DocumentMeta, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -53,7 +53,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-
+	req.Header.Add("X-API-KEY", apiKey)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -79,7 +79,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	return &dm, nil
 }
 
-func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte) ([]byte, error) {
+func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]byte, error) {
 	stirlingURL := fmt.Sprintf("%s/api/v1/convert/pdf/img", sc.BaseURL)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -113,7 +113,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte) ([]byte, error) {
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-
+	req.Header.Add("X-API-Key", apiKey)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
