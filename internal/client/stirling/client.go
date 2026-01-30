@@ -24,7 +24,7 @@ func NewClient() *StirlingClient {
 	}
 }
 
-func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader) (*documentmeta.DocumentMeta, error) {
+func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*documentmeta.DocumentMeta, error) {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -53,7 +53,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	}
 
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-
+	req.Header.Add("X-API-KEY", apiKey)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -77,6 +77,65 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	}
 
 	return &dm, nil
+}
+
+func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]byte, error) {
+	stirlingURL := fmt.Sprintf("%s/api/v1/convert/pdf/img", sc.BaseURL)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("fileInput", "thumbnail.jpeg")
+	if err != nil {
+		return nil, fmt.Errorf("create form file error: %v", err)
+	}
+
+	_, err = io.Copy(part, bytes.NewReader(pdfBytes))
+	if err != nil {
+		return nil, fmt.Errorf("write file error: %v", err)
+	}
+
+	writer.WriteField("pageNumbers", "1")
+	writer.WriteField("imageFormat", "jpeg")
+	writer.WriteField("singleOrMultiple", "single")
+	writer.WriteField("colorType", "greyscale")
+	writer.WriteField("dpi", "300")
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("close writer error: %v", err)
+	}
+
+	writer.Boundary()
+	req, err := http.NewRequest("POST",
+		stirlingURL,
+		body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Add("X-API-Key", apiKey)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New("not expected status code")
+	}
+
+	// var dm documentmeta.DocumentMeta
+	// err = json.Unmarshal(respBody, &dm)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	return respBody, nil
 }
 
 func (sc *StirlingClient) UpdateMetaData(req *http.Request) (*http.Response, error) {

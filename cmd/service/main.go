@@ -14,7 +14,7 @@ func main() {
 	dmr := documentmeta.NewRepo(db)
 	dms := documentmeta.NewService(dmr)
 
-	database.CreateSchema(db)
+	// database.CreateSchema(db)
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()
 	dps := documentpipeline.NewService(dmr, swc, sc, dms)
