@@ -25,6 +25,10 @@ func NewClient() *StirlingClient {
 }
 
 func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*documentmeta.DocumentMeta, error) {
+	var preservedBuf bytes.Buffer
+
+	pdfReader := bytes.NewReader(pdfBytes)
+	tee := io.TeeReader(pdfReader, &preservedBuf)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -33,7 +37,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 		return nil, fmt.Errorf("create form file error: %v", err)
 	}
 
-	_, err = io.Copy(part, bytes.NewReader(pdfBytes))
+	_, err = io.Copy(part, tee)
 	if err != nil {
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
@@ -80,6 +84,10 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 }
 
 func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]byte, error) {
+	var preservedBuf bytes.Buffer
+
+	pdfReader := bytes.NewReader(pdfBytes)
+	tee := io.TeeReader(pdfReader, &preservedBuf)
 	stirlingURL := fmt.Sprintf("%s/api/v1/convert/pdf/img", sc.BaseURL)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
@@ -89,7 +97,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 		return nil, fmt.Errorf("create form file error: %v", err)
 	}
 
-	_, err = io.Copy(part, bytes.NewReader(pdfBytes))
+	_, err = io.Copy(part, tee)
 	if err != nil {
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
@@ -130,17 +138,74 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 		return nil, errors.New("not expected status code")
 	}
 
-	// var dm documentmeta.DocumentMeta
-	// err = json.Unmarshal(respBody, &dm)
-	// if err != nil {
-	// 	return nil, err
-	// }
 	return respBody, nil
 }
 
-func (sc *StirlingClient) UpdateMetaData(req *http.Request) (*http.Response, error) {
+func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *documentmeta.DocumentMeta) ([]byte, error) {
+	var preservedBuf bytes.Buffer
+
+	pdfReader := bytes.NewReader(pdfBytes)
+	tee := io.TeeReader(pdfReader, &preservedBuf)
 	stirlingURL := fmt.Sprintf("%s/api/v1/misc/update-metadata", sc.BaseURL)
-	return sc.forwardReq(req, stirlingURL)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("fileInput", "")
+	if err != nil {
+		return nil, fmt.Errorf("create form file error: %v", err)
+	}
+
+	_, err = io.Copy(part, tee)
+	if err != nil {
+		return nil, fmt.Errorf("write file error: %v", err)
+	}
+	writer.WriteField("deletaAll", "false")
+	if dm.Title != nil {
+		writer.WriteField("title", *dm.Title)
+	}
+	if dm.Author != nil {
+		fmt.Println("writing author")
+		writer.WriteField("author", *dm.Author)
+	}
+	if dm.Subject != nil {
+		writer.WriteField("subject", *dm.Subject)
+	}
+	if dm.CreationDate != nil {
+		writer.WriteField("creationDate", *dm.CreationDate)
+	}
+	if dm.ModificationDate != nil {
+		writer.WriteField("modificationDate", *dm.ModificationDate)
+	}
+
+	// writer.Boundary()
+	writer.Close()
+	req, err := http.NewRequest("POST",
+		stirlingURL,
+		body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Add("X-API-Key", apiKey)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(string(respBody))
+	if resp.StatusCode != 200 {
+		return nil, errors.New("not expected status code")
+	}
+
+	return respBody, nil
 }
 
 func (sc *StirlingClient) OCRProcessing(req *http.Request) (*http.Response, error) {

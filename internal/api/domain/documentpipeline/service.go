@@ -1,9 +1,7 @@
 package documentpipeline
 
 import (
-	"io"
 	"mime/multipart"
-	"net/http"
 
 	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
@@ -32,28 +30,13 @@ func NewService(
 	}
 }
 
-func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(req *http.Request) (*documentmeta.DocumentMeta, error) {
-	err := req.ParseMultipartForm(10 << 20)
+func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []byte, header *multipart.FileHeader, apiKey string, updateDM *documentmeta.DocumentMeta) (*documentmeta.DocumentMeta, error) {
+	dmBytes, err := dps.stirlingClient.UpdateMetaData(pdfBytes, apiKey, updateDM)
 	if err != nil {
 		return nil, err
 	}
 
-	file, header, err := req.FormFile("fileInput")
-	if err != nil {
-		return nil, err
-	}
-
-	defer file.Close()
-	pdfBytes, err := io.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	apiKey := req.Header.Get("X-API-KEY")
-	dm, err := dps.stirlingClient.GetMetaData(pdfBytes, header, apiKey)
-	if err != nil {
-		return nil, err
-	}
+	dm, err := dps.stirlingClient.GetMetaData(dmBytes, header, apiKey)
 
 	assignRes, err := dps.seaweedClient.Assign()
 	if err != nil {
