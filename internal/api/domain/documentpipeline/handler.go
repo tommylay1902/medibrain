@@ -3,6 +3,7 @@ package documentpipeline
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -16,8 +17,28 @@ func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
 	}
 }
 
+func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.ResponseWriter, req *http.Request) {
+}
+
 func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter, req *http.Request) {
-	response, err := dph.service.UploadDocumentPipeline(req)
+	err := req.ParseMultipartForm(10 << 20)
+	if err != nil {
+		http.Error(w, "error parsing multipart form", http.StatusInternalServerError)
+	}
+
+	file, header, err := req.FormFile("fileInput")
+	if err != nil {
+		return nil, err
+	}
+
+	defer file.Close()
+	pdfBytes, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	apiKey := req.Header.Get("X-API-KEY")
+	response, err := dph.service.UploadDocumentPipeline(pdfBytes, header, apiKey)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Error uploading document: %v", err), http.StatusInternalServerError)
 		return

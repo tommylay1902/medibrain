@@ -2,6 +2,7 @@ package documentpipeline
 
 import (
 	"io"
+	"mime/multipart"
 	"net/http"
 
 	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
@@ -31,11 +32,12 @@ func NewService(
 	}
 }
 
-func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*documentmeta.DocumentMeta, error) {
+func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(req *http.Request) (*documentmeta.DocumentMeta, error) {
 	err := req.ParseMultipartForm(10 << 20)
 	if err != nil {
 		return nil, err
 	}
+
 	file, header, err := req.FormFile("fileInput")
 	if err != nil {
 		return nil, err
@@ -73,6 +75,48 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(req *http.Request) (*
 	if err != nil {
 		return nil, err
 	}
+
+	dm.ThumbnailFid = pdfAssign.Fid
+	err = dps.seaweedClient.StoreFile(pdfAssign.PublicURL, pdfAssign.Fid, thumbnail, header)
+	if err != nil {
+		return nil, err
+	}
+
+	err = dps.dmRepo.Create(dm)
+	if err != nil {
+		return nil, err
+	}
+
+	return dm, nil
+}
+
+func (dps *DocumentPipelineService) UploadDocumentPipeline(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*documentmeta.DocumentMeta, error) {
+	dm, err := dps.stirlingClient.GetMetaData(pdfBytes, header, apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	assignRes, err := dps.seaweedClient.Assign()
+	if err != nil {
+		return nil, err
+	}
+
+	dm.PdfFid = assignRes.Fid
+	err = dps.seaweedClient.StoreFile(assignRes.PublicURL, assignRes.Fid, pdfBytes, header)
+	if err != nil {
+		return nil, err
+	}
+
+	thumbnail, err := dps.stirlingClient.GenerateThumbnail(pdfBytes, apiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	pdfAssign, err := dps.seaweedClient.Assign()
+	if err != nil {
+		return nil, err
+	}
+
 	dm.ThumbnailFid = pdfAssign.Fid
 	err = dps.seaweedClient.StoreFile(pdfAssign.PublicURL, pdfAssign.Fid, thumbnail, header)
 	if err != nil {
