@@ -1,4 +1,4 @@
-package documentmeta
+package metadata
 
 import (
 	"fmt"
@@ -26,7 +26,6 @@ func (dmr *DocumentMetaRepo) List() (DocumentMetaList, error) {
 }
 
 func (dmr *DocumentMetaRepo) Create(meta *DocumentMeta) error {
-	fmt.Println(meta.ThumbnailFid)
 	_, err := dmr.db.NamedQuery("INSERT INTO document_meta(thumbnail_fid, pdf_fid, title, author, subject) VALUES(:thumbnail_fid,:pdf_fid,:title, :author, :subject)", meta)
 	if err != nil {
 		fmt.Println("error ")

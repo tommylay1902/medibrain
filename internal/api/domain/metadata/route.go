@@ -1,4 +1,4 @@
-package documentmeta
+package metadata
 
 import (
 	"net/http"
@@ -13,7 +13,7 @@ func NewRoutes(dms *DocumentMetaService) *Route {
 	handler := NewHandler(dms)
 
 	mux.HandleFunc("GET /", handler.List)
-	// mux.HandleFunc("POST /documentmeta", handler.GetDocumentMetaData)
+	// mux.HandleFunc("POST /metadata", handler.GetDocumentMetaData)
 	route := &Route{
 		Mux: mux,
 	}

@@ -1,4 +1,4 @@
-package documentmeta
+package metadata
 
 import (
 	"github.com/google/uuid"

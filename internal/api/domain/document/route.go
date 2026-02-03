@@ -1,4 +1,4 @@
-package documentpipeline
+package document
 
 import "net/http"
 
@@ -11,6 +11,7 @@ func NewRoutes(dps *DocumentPipelineService) *Route {
 	handler := NewHandler(dps)
 
 	mux.HandleFunc("POST /upload", handler.UploadDocumentPipeline)
+	mux.HandleFunc("POST /upload-with-edit", handler.UploadDocumentPipelineWithEdit)
 	route := &Route{
 		Mux: mux,
 	}
