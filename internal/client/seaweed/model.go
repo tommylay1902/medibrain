@@ -1,8 +1,11 @@
 package seaweedclient
 
+import "net/http"
+
 type SeaWeedClient struct {
 	MasterURL string
 	VolumeURL string
+	Client    *http.Client
 }
 
 type AssignResponse struct {

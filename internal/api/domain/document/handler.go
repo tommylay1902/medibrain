@@ -1,4 +1,4 @@
-package documentpipeline
+package document
 
 import (
 	"encoding/json"
@@ -6,7 +6,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/tommylay1902/medibrain/internal/api/domain/documentmeta"
+	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 )
 
 type DocumentPipelineHandler struct {
@@ -53,7 +53,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 	}
 
 	apiKey := req.Header.Get("X-API-KEY")
-	var updateDM documentmeta.DocumentMeta
+	var updateDM metadata.DocumentMeta
 
 	metadataJSON := req.FormValue("metadata")
 
@@ -92,6 +92,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 			req.MultipartForm.RemoveAll()
 		}
 	}()
+
 	file, header, err := req.FormFile("fileInput")
 	if err != nil {
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)

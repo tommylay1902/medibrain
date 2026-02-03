@@ -16,7 +16,7 @@ func NewDB() *sqlx.DB {
 		panic(err)
 	}
 
-	fmt.Println("succesfully conncted to db")
+	fmt.Println("succesfully connected to db")
 	return db
 }
 

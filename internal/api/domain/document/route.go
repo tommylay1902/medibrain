@@ -1,4 +1,4 @@
-package documentpipeline
+package document
 
 import "net/http"
 

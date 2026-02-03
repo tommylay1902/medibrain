@@ -1,4 +1,4 @@
-package documentmeta
+package metadata
 
 type DocumentMetaService struct {
 	repo *DocumentMetaRepo

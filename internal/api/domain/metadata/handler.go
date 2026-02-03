@@ -1,4 +1,4 @@
-package documentmeta
+package metadata
 
 import (
 	"encoding/json"
@@ -23,7 +23,7 @@ func (h *Handler) List(w http.ResponseWriter, req *http.Request) {
 	}
 	result, err := json.Marshal(pdfs)
 	if err != nil {
-		fmt.Println("error mashaling object")
+		fmt.Println("error marshaling object")
 		w.WriteHeader(500)
 		return
 	}

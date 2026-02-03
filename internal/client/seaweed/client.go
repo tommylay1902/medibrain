@@ -15,6 +15,7 @@ func NewClient() *SeaWeedClient {
 	return &SeaWeedClient{
 		MasterURL: "http://localhost:9333",
 		VolumeURL: "http://localhost:9000",
+		Client:    &http.Client{},
 	}
 }
 
@@ -63,15 +64,33 @@ func (swc *SeaWeedClient) StoreFile(publicURL string, fid string, pdfBytes []byt
 		return err
 	}
 
-	client := &http.Client{}
-	res, err := client.Do(req)
+	res, err := swc.Client.Do(req)
 	if err != nil {
 		return err
 	}
 
 	if res.StatusCode != 201 {
-		return errors.New("not expected status code from seaweed client")
+		return errors.New("not expected status code from StoreFile swc")
 	}
 
+	return nil
+}
+
+func (swc *SeaWeedClient) Delete(publicURL string, fid string) error {
+	url := fmt.Sprintf("http://%s/%s", publicURL, fid)
+
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	res, err := swc.Client.Do(req)
+	if err != nil {
+		return err
+	}
+
+	if res.StatusCode != 202 {
+		return errors.New("not expected status code from delete swc")
+	}
 	return nil
 }
