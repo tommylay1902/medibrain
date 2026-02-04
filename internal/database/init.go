@@ -9,7 +9,6 @@ import (
 )
 
 func NewDB() *sqlx.DB {
-	// Use the service name "db" as host
 	db, err := sqlx.Connect("postgres", "host=localhost port=5432 user=root password=1234 dbname=medibrain sslmode=disable")
 	if err != nil {
 		fmt.Println(err)
