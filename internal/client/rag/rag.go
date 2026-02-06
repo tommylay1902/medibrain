@@ -1,8 +1,12 @@
 package rag
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 
 	"github.com/google/uuid"
@@ -57,12 +61,10 @@ func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]f
 
 type Rag struct {
 	qClient  *qdrant.Client
-	embedder *embedder
 	splitter *textsplitter.RecursiveCharacter
 }
 
 func NewRag() *Rag {
-	embedder := newEmbedder()
 	client, err := qdrant.NewClient(&qdrant.Config{
 		Host: "localhost",
 		Port: 6334,
@@ -76,53 +78,68 @@ func NewRag() *Rag {
 
 	return &Rag{
 		qClient:  client,
-		embedder: embedder,
 		splitter: &splitter,
 	}
 }
 
-func (r *Rag) StoreDocument(doc string, fid string) []string {
+func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string) error {
+	docTitle := ""
+	if title != nil {
+		docTitle = *title
+	}
+	docUploadDate := ""
+	if uploadDate != nil {
+		docUploadDate = *uploadDate
+	}
+
+	docCreationDate := ""
+	if creationDate != nil {
+		docCreationDate = *creationDate
+	}
 	document := schema.Document{
 		PageContent: doc,
 	}
 	chunks, _ := r.splitter.SplitText(document.PageContent)
-	vec, err := r.embedder.GenerateEmbedding(context.Background(), chunks)
-	if err != nil {
-		fmt.Println("error embedding chunks")
-		panic(err)
-	}
 	points := make([]*qdrant.PointStruct, 0, len(chunks))
-	for i := range vec {
+	for _, chunk := range chunks {
+		vec, err := getEmbedding(chunk)
+		if err != nil {
+			continue
+		}
 		payload := qdrant.NewValueMap(map[string]any{
-			"fid":     fid,
-			"content": chunks[i],
+			"fid":          fid,
+			"title":        docTitle,
+			"content":      chunk,
+			"uploadDate":   docUploadDate,
+			"creationDate": docCreationDate,
 		})
-		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec[i]...), Payload: payload})
+		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
 	}
-	_, err = r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+	_, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
 		CollectionName: "documents",
 		Points:         points,
 	})
 	if err != nil {
-		fmt.Println(err)
+		return err
 	}
 
-	return chunks
+	return nil
 }
 
 type Response struct {
 	Content string `json:"content"`
 	Fid     string `json:"fid"`
+	Title   string `json:"title"`
 }
 
 func (r *Rag) GetChunksByQuery(query string) []Response {
-	chunks, err := r.embedder.GenerateEmbedding(context.Background(), []string{query})
+	vec, err := getEmbedding(query)
 	if err != nil {
 		panic(err)
 	}
 	results, err := r.qClient.Query(context.Background(), &qdrant.QueryPoints{
 		CollectionName: "documents",
-		Query:          qdrant.NewQuery(chunks[0]...),
+		Query:          qdrant.NewQuery(vec...),
 		WithPayload:    qdrant.NewWithPayload(true),
 	})
 	if err != nil {
@@ -144,13 +161,18 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 			content := contentValue.GetStringValue()
 			r.Content = content
 		}
+
+		if titleValue, exists := payload["title"]; exists && titleValue != nil {
+			title := titleValue.GetStringValue()
+			r.Title = title
+		}
+
 		responses = append(responses, r)
 	}
 
 	return responses
 }
 
-// Access fields
 func GenerateCollections(r *Rag) {
 	exists, err := r.qClient.CollectionExists(context.Background(), "documents")
 	if err != nil {
@@ -225,4 +247,47 @@ func GenerateCollections(r *Rag) {
 		fmt.Println("error creating notes collection")
 		panic(err)
 	}
+}
+
+type EmbeddingRequest struct {
+	Model  string `json:"model"`
+	Prompt string `json:"prompt"`
+}
+
+type EmbeddingResponse struct {
+	Embedding []float32 `json:"embedding"`
+}
+
+func getEmbedding(text string) ([]float32, error) {
+	reqBody := EmbeddingRequest{Model: "all-minilm:l6-v2", Prompt: text}
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	resp, err := http.Post(
+		"http://localhost:11434/api/embeddings",
+		"application/json",
+		bytes.NewBuffer(jsonBody),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call Ollama API: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
+	}
+
+	// 4. Parse the embedding
+	var embeddingResp EmbeddingResponse
+	if err := json.Unmarshal(body, &embeddingResp); err != nil {
+		return nil, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	return embeddingResp.Embedding, nil
 }

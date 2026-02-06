@@ -24,6 +24,57 @@ func NewClient() *StirlingClient {
 	}
 }
 
+func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*string, error) {
+	var preservedBuf bytes.Buffer
+
+	pdfReader := bytes.NewReader(pdfBytes)
+	tee := io.TeeReader(pdfReader, &preservedBuf)
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+
+	part, err := writer.CreateFormFile("fileInput", header.Filename)
+	if err != nil {
+		return nil, fmt.Errorf("create form file error: %v", err)
+	}
+
+	_, err = io.Copy(part, tee)
+	if err != nil {
+		return nil, fmt.Errorf("write file error: %v", err)
+	}
+
+	writer.WriteField("outputFormat", "txt")
+	err = writer.Close()
+	if err != nil {
+		return nil, fmt.Errorf("close writer error: %v", err)
+	}
+
+	req, err := http.NewRequest("POST",
+		fmt.Sprintf("%s/api/v1/convert/pdf/text", sc.BaseURL),
+		body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Add("X-API-KEY", apiKey)
+	resp, err := sc.Client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != 200 {
+		return nil, errors.New("not expected status code")
+	}
+	result := string(respBody)
+	return &result, nil
+}
+
 func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.DocumentMeta, error) {
 	var preservedBuf bytes.Buffer
 
