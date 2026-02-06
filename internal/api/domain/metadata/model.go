@@ -11,6 +11,7 @@ var DocumentMetaSchema = `
 	pdf_fid TEXT NOT NULL,
 	modification_date TIMESTAMP,
 	creation_date TIMESTAMP,
+	keywords TEXT NOT NULL,
 	title TEXT, 
 	author TEXT,
 	subject TEXT
@@ -22,11 +23,10 @@ type DocumentMeta struct {
 	PdfFid           string     `json:"pdfFid" db:"pdf_fid"`
 	ModificationDate *string    `json:"modificationDate" db:"modification_date" `
 	CreationDate     *string    `json:"creationDate" db:"creation_date"`
-	// Tags                 []string   `json:"tags"`
-	Title   *string `json:"title" db:"title"`
-	Author  *string `json:"author" db:"author"`
-	Subject *string `json:"subject" db:"subject"`
-	// RelatedTo
+	Keywords         string     `json:"keywords" db:"keywords"`
+	Title            *string    `json:"title" db:"title"`
+	Author           *string    `json:"author" db:"author"`
+	Subject          *string    `json:"subject" db:"subject"`
 }
 
 type DocumentMetaList []*DocumentMeta

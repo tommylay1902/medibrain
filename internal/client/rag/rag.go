@@ -82,7 +82,7 @@ func NewRag() *Rag {
 	}
 }
 
-func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string) error {
+func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
 	docTitle := ""
 	if title != nil {
 		docTitle = *title
@@ -112,6 +112,7 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 			"content":      chunk,
 			"uploadDate":   docUploadDate,
 			"creationDate": docCreationDate,
+			"keywords":     keywords,
 		})
 		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
 	}
@@ -127,9 +128,10 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 }
 
 type Response struct {
-	Content string `json:"content"`
-	Fid     string `json:"fid"`
-	Title   string `json:"title"`
+	Content  string `json:"content"`
+	Fid      string `json:"fid"`
+	Title    string `json:"title"`
+	Keywords string `json:"keywords"`
 }
 
 func (r *Rag) GetChunksByQuery(query string) []Response {
@@ -165,6 +167,11 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 		if titleValue, exists := payload["title"]; exists && titleValue != nil {
 			title := titleValue.GetStringValue()
 			r.Title = title
+		}
+
+		if keywordsValue, exists := payload["keywords"]; exists && keywordsValue != nil {
+			keywords := keywordsValue.GetStringValue()
+			r.Keywords = keywords
 		}
 
 		responses = append(responses, r)

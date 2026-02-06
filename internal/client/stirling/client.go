@@ -208,6 +208,7 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 	if err != nil {
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
+
 	writer.WriteField("deletaAll", "false")
 	if dm.Title != nil {
 		writer.WriteField("title", *dm.Title)
@@ -225,7 +226,8 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 		writer.WriteField("modificationDate", *dm.ModificationDate)
 	}
 
-	// writer.Boundary()
+	writer.WriteField("keywords", dm.Keywords)
+
 	writer.Close()
 	req, err := http.NewRequest("POST",
 		stirlingURL,
@@ -254,7 +256,3 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 
 	return respBody, nil
 }
-
-// func (sc *StirlingClient) OCRProcessing(req *http.Request) (*http.Response, error) {
-// 	stirlingURL := fmt.Sprintf("%s/api/v1/misc/ocr-pdf", sc.BaseURL)
-// }
