@@ -174,6 +174,10 @@ func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, re
 	dm, err := dph.service.stirlingClient.GetMetaData(pdfBytes, header, apiKey)
 
 	fid := req.FormValue("fid")
+	if strings.TrimSpace(fid) == "" {
+		http.Error(w, fmt.Sprintf("Need fid: %v", err), http.StatusBadRequest)
+		return
+	}
 
 	if err = dph.service.ragClient.StoreDocument(*textBody, fid, dm.Title, dm.CreationDate, dm.ModificationDate, dm.Keywords); err != nil {
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)

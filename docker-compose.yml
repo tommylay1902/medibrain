@@ -16,6 +16,8 @@ services:
       start_period: 30s
     volumes:
       - master_data:/data
+    networks:
+      - app-network
   file-storage-volume:
     image: chrislusf/seaweedfs:latest
     ports:
@@ -25,6 +27,8 @@ services:
     hostname: seaweedfs_volume
     command: "volume -dir=/data -publicUrl=localhost:9000 -port=9000 -ip=seaweedfs_volume -mserver=seaweedfs_master:9333"
     restart: unless-stopped
+    networks:
+      - app-network
     depends_on:
       file-storage-master:
         condition: service_healthy
@@ -63,16 +67,17 @@ services:
       - "6333:6333"
       - "6334:6334"
     volumes:
-      - qdrant_data:/data
+      - qdrant_data:/qdrant/storage
     networks:
       - app-network
-    restart: unless-stopped
+    restart: always
 
 volumes:
   master_data:
   volume_data:
   db_data:
   qdrant_data:
+    driver: local
 
 networks:
   app-network:
