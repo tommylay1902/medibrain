@@ -6,6 +6,7 @@ import (
 	"mime/multipart"
 
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
+	"github.com/tommylay1902/medibrain/internal/client/rag"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
 )
@@ -16,6 +17,7 @@ type DocumentPipelineService struct {
 	stirlingClient *stirling.StirlingClient
 	seaweedClient  *seaweedclient.SeaWeedClient
 	dms            *metadata.DocumentMetaService
+	ragClient      *rag.Rag
 }
 
 func NewService(
@@ -23,12 +25,14 @@ func NewService(
 	seaweedClient *seaweedclient.SeaWeedClient,
 	stirlingClient *stirling.StirlingClient,
 	dms *metadata.DocumentMetaService,
+	ragClient *rag.Rag,
 ) *DocumentPipelineService {
 	return &DocumentPipelineService{
 		dmRepo:         dmRepo,
 		seaweedClient:  seaweedClient,
 		stirlingClient: stirlingClient,
 		dms:            dms,
+		ragClient:      ragClient,
 	}
 }
 
@@ -158,6 +162,11 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(pdfBytes []byte, head
 	}
 
 	return dm, nil
+}
+
+func (dps *DocumentPipelineService) UploadChunks(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.DocumentMeta, error) {
+	fmt.Println(string(pdfBytes))
+	return nil, nil
 }
 
 func (dps *DocumentPipelineService) cleanupResources(publicURL string, fids ...string) []error {

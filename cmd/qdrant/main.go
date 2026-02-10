@@ -5,8 +5,6 @@ import (
 )
 
 func main() {
-	// db := database.NewDB()
-	// database.CreateSchema(db)
 	qdrant := rag.NewRag()
 	rag.GenerateCollections(qdrant)
 }

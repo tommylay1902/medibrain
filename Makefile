@@ -16,6 +16,7 @@ PSQL_URI=postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
 
 help:
 	@echo "Available commands:"
+	@echo "  make qdrant-seed - Drops any existing collections and reconstruct collections from go"
 	@echo "  make db-reset    - Drop all tables and recreate schema"
 	@echo "  make db-drop     - Drop all tables in the database"
 	@echo "  make db-create   - Create tables from SQL file"
@@ -25,7 +26,19 @@ help:
 	@echo "  make run-database - Run your database seeding command"
 	@echo "  make run-api     - Run the API server"
 
-# Wait for database to be ready
+
+qdrant-seed:
+	@echo "Dropping and recreating qdrant collections with Go program..."
+	@cd cmd/qdrant && go run main.go
+	
+# qdrant-wait:
+# 	@echo "Waiting for Qdrant to be ready..."
+# 	@until curl -s http://localhost:6334/collections > /dev/null; do \
+# 		echo "Waiting for Qdrant..."; \
+# 		sleep 2; \
+# 	done
+# 	@echo "Qdrant is ready!"
+
 db-wait:
 	@echo "Waiting for database to be ready..."
 	@until docker exec $(DB_CONTAINER_NAME) pg_isready -U $(DB_USER) -d $(DB_NAME); do \
@@ -34,13 +47,11 @@ db-wait:
 	done
 	@echo "Database is ready!"
 
-# Drop all tables in the database
 db-drop: db-wait
 	@echo "Dropping all tables..."
 	@docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO public;"
 	@echo "All tables dropped!"
 
-# Create tables from SQL file
 db-create: db-wait
 	@echo "Creating tables from $(SQL_FILE)..."
 	@if [ -f "$(SQL_FILE)" ]; then \
@@ -52,11 +63,9 @@ db-create: db-wait
 		exit 1; \
 	fi
 
-# Main reset command - drop and recreate
 db-reset: db-drop db-create
 	@echo "Database reset complete!"
 
-# Run a specific SQL file
 db-schema: db-wait
 	@echo "Running SQL file: $(SQL_FILE)..."
 	@if [ -f "$(SQL_FILE)" ]; then \
@@ -68,43 +77,35 @@ db-schema: db-wait
 		exit 1; \
 	fi
 
-# Run your Go database seeding command
 db-seed: db-wait
 	@echo "Seeding database with Go program..."
 	@cd cmd/database && go run main.go
 
-# Just run your database seeding command
 run-database: db-wait
 	@echo "Running database seeding program..."
 	@cd cmd/database && go run main.go
 
-# Run your API
 run-api:
 	@echo "Starting API server..."
 	@cd cmd/api && go run main.go
 
-# Connect to the database with psql
 db-connect:
 	@echo "Connecting to database..."
 	@docker exec -it $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME)
 
-# List all tables
 db-tables: db-wait
 	@echo "Listing all tables..."
 	@docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "\dt"
 
-# Show database info
 db-info: db-wait
 	@echo "Database information:"
 	@docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "\l medibrain"
 
-# Backup database to file
 db-backup:
 	@echo "Backing up database..."
 	@docker exec $(DB_CONTAINER_NAME) pg_dump -U $(DB_USER) $(DB_NAME) > backup_$(shell date +%Y%m%d_%H%M%S).sql
 	@echo "Backup created!"
 
-# Restore database from backup
 db-restore:
 	@echo "Restoring database from backup..."
 	@if [ -f "$(BACKUP_FILE)" ]; then \
@@ -116,17 +117,14 @@ db-restore:
 		exit 1; \
 	fi
 
-# Development: run both API and database seed (in background)
 dev:
 	@echo "Starting development environment..."
 	@echo "Run 'make run-api' in one terminal"
 	@echo "Run 'make run-database' in another terminal"
 
-# Quick reset and seed (useful for development)
 fresh: db-reset db-seed
 	@echo "Fresh database ready!"
 
-# If you're using sqlx and want to run migrations
 db-migrate: db-wait
 	@echo "Running migrations..."
 	@if [ -f "cmd/database/main.go" ]; then \
