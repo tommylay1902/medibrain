@@ -18,7 +18,7 @@ type Mux struct {
 // routes are then initialized here and mounted under the "/api/v1/" prefix.
 //
 // Returns the configured main router with all routes ready for server use.
-func NewMux(dms *metadata.DocumentMetaService, dps *document.DocumentPipelineService) *Mux {
+func NewMux(dms *metadata.MetadataService, dps *document.DocumentPipelineService) *Mux {
 	mainMux := http.NewServeMux()
 
 	// Create API v1 subrouter

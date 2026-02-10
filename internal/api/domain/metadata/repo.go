@@ -6,16 +6,16 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-type DocumentMetaRepo struct {
+type MetadataRepo struct {
 	db *sqlx.DB
 }
 
-func NewRepo(db *sqlx.DB) *DocumentMetaRepo {
-	return &DocumentMetaRepo{db: db}
+func NewRepo(db *sqlx.DB) *MetadataRepo {
+	return &MetadataRepo{db: db}
 }
 
-func (dmr *DocumentMetaRepo) List() (DocumentMetaList, error) {
-	var results DocumentMetaList
+func (dmr *MetadataRepo) List() (MetadataList, error) {
+	var results MetadataList
 
 	err := dmr.db.Select(&results, "SELECT * FROM document_meta ")
 	if err != nil {
@@ -25,8 +25,8 @@ func (dmr *DocumentMetaRepo) List() (DocumentMetaList, error) {
 	return results, nil
 }
 
-func (dmr *DocumentMetaRepo) Create(meta *DocumentMeta) error {
-	_, err := dmr.db.NamedQuery("INSERT INTO document_meta(thumbnail_fid, pdf_fid, keywords, title, author, subject) VALUES(:thumbnail_fid, :pdf_fid, :keywords, :title, :author, :subject)", meta)
+func (dmr *MetadataRepo) Create(meta *Metadata) error {
+	_, err := dmr.db.NamedQuery("INSERT INTO metadata(thumbnail_fid, pdf_fid, keywords, title, author, subject) VALUES(:thumbnail_fid, :pdf_fid, :keywords, :title, :author, :subject)", meta)
 	if err != nil {
 		fmt.Println("error ")
 		return err

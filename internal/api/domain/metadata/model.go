@@ -4,20 +4,7 @@ import (
 	"github.com/google/uuid"
 )
 
-var DocumentMetaSchema = `
-	CREATE TABLE document_meta(
-	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	thumbnail_fid TEXT NOT NULL,
-	pdf_fid TEXT NOT NULL,
-	modification_date TIMESTAMP,
-	creation_date TIMESTAMP,
-	keywords TEXT NOT NULL,
-	title TEXT, 
-	author TEXT,
-	subject TEXT
-	)`
-
-type DocumentMeta struct {
+type Metadata struct {
 	ID               *uuid.UUID `json:"id,omitempty" db:"id"`
 	ThumbnailFid     string     `json:"thumbnailFid" db:"thumbnail_fid"`
 	PdfFid           string     `json:"pdfFid" db:"pdf_fid"`
@@ -29,4 +16,4 @@ type DocumentMeta struct {
 	Subject          *string    `json:"subject" db:"subject"`
 }
 
-type DocumentMetaList []*DocumentMeta
+type MetadataList []*Metadata

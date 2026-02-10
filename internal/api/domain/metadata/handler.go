@@ -7,10 +7,10 @@ import (
 )
 
 type Handler struct {
-	service *DocumentMetaService
+	service *MetadataService
 }
 
-func NewHandler(service *DocumentMetaService) *Handler {
+func NewHandler(service *MetadataService) *Handler {
 	return &Handler{service: service}
 }
 
@@ -39,5 +39,5 @@ func (h *Handler) List(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (h *Handler) CreateDocumentMeta(w http.ResponseWriter, req *http.Request) {
+func (h *Handler) CreateMetadata(w http.ResponseWriter, req *http.Request) {
 }

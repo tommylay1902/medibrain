@@ -24,14 +24,6 @@ func NewDB() *sqlx.DB {
 }
 
 func CreateSchema(db *sqlx.DB) {
-	// Get current working directory
-	// wd, err := os.Getwd()
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// Build absolute path
-	// fullPath := filepath.Join(wd, "medibrain/internal/database/migrations/schemas.sql")
 	fmt.Println(sqlContent)
 	sql, err := os.ReadFile(sqlContent)
 	if err != nil {

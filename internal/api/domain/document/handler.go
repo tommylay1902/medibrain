@@ -57,7 +57,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 	}
 
 	apiKey := req.Header.Get("X-API-KEY")
-	var updateDM metadata.DocumentMeta
+	var updateDM metadata.Metadata
 
 	metadataJSON := req.FormValue("metadata")
 

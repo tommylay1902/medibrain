@@ -75,7 +75,7 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 	return &result, nil
 }
 
-func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.DocumentMeta, error) {
+func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.Metadata, error) {
 	var preservedBuf bytes.Buffer
 
 	pdfReader := bytes.NewReader(pdfBytes)
@@ -124,7 +124,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 		return nil, errors.New("not expected status code")
 	}
 
-	var dm metadata.DocumentMeta
+	var dm metadata.Metadata
 	err = json.Unmarshal(respBody, &dm)
 	if err != nil {
 		return nil, err
@@ -190,7 +190,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 	return respBody, nil
 }
 
-func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *metadata.DocumentMeta) ([]byte, error) {
+func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *metadata.Metadata) ([]byte, error) {
 	var preservedBuf bytes.Buffer
 
 	pdfReader := bytes.NewReader(pdfBytes)

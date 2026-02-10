@@ -1,4 +1,3 @@
-# Variables
 DB_CONTAINER_NAME=medibrain-db
 DB_HOST=localhost
 DB_PORT=5432
@@ -7,8 +6,9 @@ DB_USER=root
 DB_PASSWORD=1234
 SSL_MODE=disable
 SQL_FILE?=./internal/database/migrations/schemas.sql
+MIGRATION_NAME?=db_update
+STEPS?=1
 
-# Connection string for psql
 PSQL_CMD=docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME)
 PSQL_URI=postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(SSL_MODE)
 
@@ -16,82 +16,47 @@ PSQL_URI=postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
 
 help:
 	@echo "Available commands:"
+	@echo "  make db-create-migrate MIGRATION_NAME=migration_name - Create a new migration files (up and down)"
+	@echo "  make db-migrate-up STEPS=<number>  - run migrations by step (default is 1, you can provide empty after argument to up all )"
+	@echo "  make db-migrate-down STEPS=<number> - down migrations by step (default is 1, you can provide empty space after argument to down all)"
 	@echo "  make qdrant-seed - Drops any existing collections and reconstruct collections from go"
-	@echo "  make db-reset    - Drop all tables and recreate schema"
-	@echo "  make db-drop     - Drop all tables in the database"
-	@echo "  make db-create   - Create tables from SQL file"
-	@echo "  make db-schema   - Run specific SQL file (use SQL_FILE=path/to/file.sql)"
 	@echo "  make db-wait     - Wait for database to be ready"
 	@echo "  make db-seed     - Seed the database with data"
 	@echo "  make run-database - Run your database seeding command"
-	@echo "  make run-api     - Run the API server"
+	@echo "  make db-tables - List all database tables"
 
+db-create-migrate: db-wait
+	@echo "Creating migration..."
+	@if [ -d "internal/database/migrate" ]; then \
+		cd ./internal/database/migrate && migrate create -ext sql -dir . -seq $(MIGRATION_NAME); \
+	else \
+		echo "migrate folder not found at internal/database/migrate"; \
+	fi
+
+db-migrate-up: db-wait
+	@echo "Running migrations..."
+	@if [ -d "internal/database/migrate" ]; then \
+		cd internal/database/migrate && migrate -database $(PSQL_URI) -path ./ up $(STEPS); \
+		echo "success!"; \
+	else \
+		echo "migrate folder not found at internal/database/migrate"; \
+	fi
+
+db-migrate-down: db-wait
+	@echo "Reverting last migration..."
+	@if [ -d "internal/database/migrate" ]; then \
+		cd ./internal/database/migrate && migrate -database $(PSQL_URI) -path . down $(STEPS); \
+	else \
+		echo "migrate folder not found at internal/database/migrate"; \
+	fi
 
 qdrant-seed:
 	@echo "Dropping and recreating qdrant collections with Go program..."
 	@cd cmd/qdrant && go run main.go
-	
-# qdrant-wait:
-# 	@echo "Waiting for Qdrant to be ready..."
-# 	@until curl -s http://localhost:6334/collections > /dev/null; do \
-# 		echo "Waiting for Qdrant..."; \
-# 		sleep 2; \
-# 	done
-# 	@echo "Qdrant is ready!"
-
-db-wait:
-	@echo "Waiting for database to be ready..."
-	@until docker exec $(DB_CONTAINER_NAME) pg_isready -U $(DB_USER) -d $(DB_NAME); do \
-		echo "Waiting for database..."; \
-		sleep 2; \
-	done
-	@echo "Database is ready!"
-
-db-drop: db-wait
-	@echo "Dropping all tables..."
-	@docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO public;"
-	@echo "All tables dropped!"
-
-db-create: db-wait
-	@echo "Creating tables from $(SQL_FILE)..."
-	@if [ -f "$(SQL_FILE)" ]; then \
-		cat $(SQL_FILE) | docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME); \
-		echo "Tables created successfully!"; \
-	else \
-		echo "Error: SQL file $(SQL_FILE) not found!"; \
-		echo "Please specify with: make db-create SQL_FILE=./path/to/schema.sql"; \
-		exit 1; \
-	fi
-
-db-reset: db-drop db-create
-	@echo "Database reset complete!"
-
-db-schema: db-wait
-	@echo "Running SQL file: $(SQL_FILE)..."
-	@if [ -f "$(SQL_FILE)" ]; then \
-		cat $(SQL_FILE) | $(PSQL_CMD); \
-		echo "SQL file executed successfully!"; \
-	else \
-		echo "Error: SQL file $(SQL_FILE) not found!"; \
-		echo "Please specify with: make db-schema SQL_FILE=./path/to/file.sql"; \
-		exit 1; \
-	fi
 
 db-seed: db-wait
 	@echo "Seeding database with Go program..."
 	@cd cmd/database && go run main.go
-
-run-database: db-wait
-	@echo "Running database seeding program..."
-	@cd cmd/database && go run main.go
-
-run-api:
-	@echo "Starting API server..."
-	@cd cmd/api && go run main.go
-
-db-connect:
-	@echo "Connecting to database..."
-	@docker exec -it $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME)
 
 db-tables: db-wait
 	@echo "Listing all tables..."
@@ -101,34 +66,18 @@ db-info: db-wait
 	@echo "Database information:"
 	@docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME) -c "\l medibrain"
 
-db-backup:
-	@echo "Backing up database..."
-	@docker exec $(DB_CONTAINER_NAME) pg_dump -U $(DB_USER) $(DB_NAME) > backup_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "Backup created!"
+# db-backup:
+# 	@echo "Backing up database..."
+# 	@docker exec $(DB_CONTAINER_NAME) pg_dump -U $(DB_USER) $(DB_NAME) > backup_$(shell date +%Y%m%d_%H%M%S).sql
+# 	@echo "Backup created!"
 
-db-restore:
-	@echo "Restoring database from backup..."
-	@if [ -f "$(BACKUP_FILE)" ]; then \
-		cat $(BACKUP_FILE) | docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME); \
-		echo "Database restored from $(BACKUP_FILE)"; \
-	else \
-		echo "Error: Backup file $(BACKUP_FILE) not found!"; \
-		echo "Usage: make db-restore BACKUP_FILE=./backup.sql"; \
-		exit 1; \
-	fi
+# fresh: db-reset db-seed
+# 	@echo "Fresh database ready!"
 
-dev:
-	@echo "Starting development environment..."
-	@echo "Run 'make run-api' in one terminal"
-	@echo "Run 'make run-database' in another terminal"
-
-fresh: db-reset db-seed
-	@echo "Fresh database ready!"
-
-db-migrate: db-wait
-	@echo "Running migrations..."
-	@if [ -f "cmd/database/main.go" ]; then \
-		cd cmd/database && go run main.go migrate; \
-	else \
-		echo "Database program not found at cmd/database/main.go"; \
-	fi
+db-wait:
+	@echo "Waiting for database to be ready..."
+	@until docker exec $(DB_CONTAINER_NAME) pg_isready -U $(DB_USER) -d $(DB_NAME); do \
+		echo "Waiting for database..."; \
+		sleep 2; \
+	done
+	@echo "Database is ready!"
