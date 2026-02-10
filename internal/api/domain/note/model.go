@@ -7,13 +7,18 @@ import (
 )
 
 type Note struct {
-	ID               *uuid.UUID
-	CreationDate     *time.Time
-	ModificationDate *time.Time
-	Content          string
+	ID               *uuid.UUID `json:"id" db:"id"`
+	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
+	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
+	Content          string     `json:"content" db:"content"`
 }
 
-type NoteKeywords struct {
-	ID     *uuid.UUID
-	NoteID uuid.UUID
+type NoteKeyword struct {
+	ID     *uuid.UUID `json:"id" db:"id"`
+	NoteID uuid.UUID  `json:"note_id" db:"note_id"`
 }
+
+type (
+	NoteList        []*Note
+	NoteKeywordList []*NoteKeyword
+)

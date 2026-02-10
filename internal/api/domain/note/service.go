@@ -10,4 +10,11 @@ func NewNoteService(repo *NoteRepo) *NoteService {
 	}
 }
 
-func (ns *NoteService) List()
+func (ns *NoteService) List() (NoteList, error) {
+	notes, err := ns.repo.List()
+	if err != nil {
+		return nil, err
+	}
+
+	return notes, nil
+}

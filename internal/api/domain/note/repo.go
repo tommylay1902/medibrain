@@ -11,3 +11,12 @@ func NewNoteRepo(db *sqlx.DB) *NoteRepo {
 		db: db,
 	}
 }
+
+func (nr *NoteRepo) List() (NoteList, error) {
+	var notes []*Note
+	err := nr.db.Select(&notes, "SELECT * FROM note")
+	if err != nil {
+		return nil, err
+	}
+	return notes, nil
+}
