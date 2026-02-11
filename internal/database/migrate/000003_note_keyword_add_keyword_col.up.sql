@@ -1,0 +1,1 @@
+ALTER TABLE note_keyword ADD COLUMN keyword TEXT NOT NULL;

@@ -37,8 +37,6 @@ func NewMux(dms *metadata.MetadataService, dps *document.DocumentPipelineService
 	apiV1Handler := applyMiddleware(http.StripPrefix("/api/v1", apiV1), CorsMiddleware)
 	mainMux.Handle("/api/v1/", apiV1Handler)
 
-	// mainMux.HandleFunc("/", rootHandler)
-
 	return &Mux{Mux: mainMux}
 }
 

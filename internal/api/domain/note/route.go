@@ -10,7 +10,7 @@ func NewNoteRoutes(ns *NoteService) *Route {
 	mux := http.NewServeMux()
 	handler := NewNoteHandler(ns)
 	mux.HandleFunc("GET /", handler.List)
-
+	mux.HandleFunc("GET /keywords", handler.ListWithKeywords)
 	route := &Route{
 		Mux: mux,
 	}

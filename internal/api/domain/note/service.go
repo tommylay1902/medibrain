@@ -18,3 +18,8 @@ func (ns *NoteService) List() (NoteList, error) {
 
 	return notes, nil
 }
+
+func (ns *NoteService) ListWithKeywords() (*NoteWithKeywords, error) {
+	result, err := ns.repo.ListWithKeywords()
+	return result, err
+}

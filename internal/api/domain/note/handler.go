@@ -27,3 +27,17 @@ func (nh *NoteHandler) List(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 }
+
+func (nh *NoteHandler) ListWithKeywords(w http.ResponseWriter, req *http.Request) {
+	notesWithKeyword, err := nh.noteService.ListWithKeywords()
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(notesWithKeyword)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
+}
