@@ -1,6 +1,8 @@
 package note
 
-import "github.com/jmoiron/sqlx"
+import (
+	"github.com/jmoiron/sqlx"
+)
 
 type NoteRepo struct {
 	db *sqlx.DB
@@ -21,8 +23,8 @@ func (nr *NoteRepo) List() (NoteList, error) {
 	return notes, nil
 }
 
-func (nr *NoteRepo) ListWithKeywords() (*NoteWithKeywords, error) {
-	var joinResult []NoteJoinKeyword
+func (nr *NoteRepo) ListWithKeywords() (*NoteWithTags, error) {
+	var joinResult []NoteJoinTag
 	err := nr.db.Select(&joinResult, "SELECT n.id AS id, n.creation_date AS creation_date, n.modification_date as modification_date n.content as content, nk.keyword as keyword FROM note AS n INNER JOIN note_keyword AS nk ON n.id = nk.note_id ")
 	if err != nil {
 		return nil, err
@@ -32,7 +34,7 @@ func (nr *NoteRepo) ListWithKeywords() (*NoteWithKeywords, error) {
 		return nil, nil
 	}
 
-	noteKeywords := &NoteWithKeywords{
+	noteKeywords := &NoteWithTags{
 		ID:               joinResult[0].ID,
 		CreationDate:     joinResult[0].CreationDate,
 		ModificationDate: joinResult[0].ModificationDate,
@@ -46,3 +48,6 @@ func (nr *NoteRepo) ListWithKeywords() (*NoteWithKeywords, error) {
 
 	return noteKeywords, nil
 }
+
+// func (nr *NoteRepo) CreateNoteWithKeywords(notesWithKeywords *NoteWithKeywords) (uuid.UUID, error) {
+// }

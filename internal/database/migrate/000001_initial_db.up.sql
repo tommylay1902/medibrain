@@ -10,5 +10,21 @@ CREATE TABLE metadata(
 	subject TEXT
 );
 
+CREATE TABLE note(
+	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+	creation_date TEXT NOT NULL,
+	modification_date TEXT NOT NULL,
+	content TEXT
+);
 
+CREATE TABLE tag(
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name TEXT 
+);
+
+CREATE TABLE note_tag(
+  note_id UUID REFERENCES note,
+  tag_id UUID REFERENCES tag,
+  PRIMARY KEY(note_id, tag_id)
+);
 

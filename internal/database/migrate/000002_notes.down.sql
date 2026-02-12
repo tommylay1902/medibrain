@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS note_keyword;
-DROP TABLE IF EXISTS note;

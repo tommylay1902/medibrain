@@ -8,6 +8,7 @@ SSL_MODE=disable
 SQL_FILE?=./internal/database/migrations/schemas.sql
 MIGRATION_NAME?=db_update
 STEPS?=1
+VERSION?=1
 
 PSQL_CMD=docker exec -i $(DB_CONTAINER_NAME) psql -U $(DB_USER) -d $(DB_NAME)
 PSQL_URI=postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(SSL_MODE)
@@ -46,6 +47,14 @@ db-migrate-down: db-wait
 	@echo "Reverting last migration..."
 	@if [ -d "internal/database/migrate" ]; then \
 		cd ./internal/database/migrate && migrate -database $(PSQL_URI) -path . down $(STEPS); \
+	else \
+		echo "migrate folder not found at internal/database/migrate"; \
+	fi
+
+db-migrate-force: db-wait
+	@echo "rolling back to last good migration..."
+	@if [ -d "internal/database/migrate" ]; then \
+		cd ./internal/database/migrate && migrate -database $(PSQL_URI) -path . force $(VERSION); \
 	else \
 		echo "migrate folder not found at internal/database/migrate"; \
 	fi

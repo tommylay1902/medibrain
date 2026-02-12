@@ -13,13 +13,7 @@ type Note struct {
 	Content          string     `json:"content" db:"content"`
 }
 
-type NoteKeyword struct {
-	ID      *uuid.UUID `json:"id" db:"id"`
-	NoteID  uuid.UUID  `json:"note_id" db:"note_id"`
-	Keyword string     `json:"keyword" db:"keyword"`
-}
-
-type NoteJoinKeyword struct {
+type NoteJoinTag struct {
 	ID               *uuid.UUID `json:"id" db:"id"`
 	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
 	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
@@ -27,7 +21,7 @@ type NoteJoinKeyword struct {
 	Keyword          string     `json:"keyword"`
 }
 
-type NoteWithKeywords struct {
+type NoteWithTags struct {
 	ID               *uuid.UUID `json:"id" db:"id"`
 	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
 	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
@@ -35,7 +29,4 @@ type NoteWithKeywords struct {
 	Keywords         []*string  `json:"keywords"`
 }
 
-type (
-	NoteList        []*Note
-	NoteKeywordList []*NoteKeyword
-)
+type NoteList []*Note
