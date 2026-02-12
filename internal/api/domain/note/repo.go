@@ -1,6 +1,7 @@
 package note
 
 import (
+	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -49,5 +50,5 @@ func (nr *NoteRepo) ListWithKeywords() (*NoteWithTags, error) {
 	return noteKeywords, nil
 }
 
-// func (nr *NoteRepo) CreateNoteWithKeywords(notesWithKeywords *NoteWithKeywords) (uuid.UUID, error) {
-// }
+func (nr *NoteRepo) CreateNoteWithKeywords(notesWithKeywords *NoteWithKeywords) (uuid.UUID, error) {
+}

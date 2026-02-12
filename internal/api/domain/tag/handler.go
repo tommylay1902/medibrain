@@ -31,4 +31,17 @@ func (th *TagHandler) List(w http.ResponseWriter, req *http.Request) {
 }
 
 func (th *TagHandler) Create(w http.ResponseWriter, req *http.Request) {
+	var tag Tag
+	err := json.NewDecoder(req.Body).Decode(&tag)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Bad request error: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	err = th.ts.Create(&tag)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("interal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
 }

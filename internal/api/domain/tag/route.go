@@ -10,6 +10,7 @@ func NewTagRoutes(ts *TagService) *Route {
 	mux := http.NewServeMux()
 	handler := NewTagHandler(ts)
 	mux.HandleFunc("GET /", handler.List)
+	mux.HandleFunc("POST /", handler.Create)
 	route := &Route{
 		Mux: mux,
 	}

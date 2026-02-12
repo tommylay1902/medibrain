@@ -15,3 +15,8 @@ func (tr *TagRepo) List() (TagList, error) {
 	err := tr.db.Select(&tags, "SELECT * FROM TAG")
 	return tags, err
 }
+
+func (tr *TagRepo) Create(tag *Tag) error {
+	_, err := tr.db.NamedQuery("INSERT INTO tag(name) VALUES(:name)", tag)
+	return err
+}

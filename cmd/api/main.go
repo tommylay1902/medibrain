@@ -5,6 +5,7 @@ import (
 	"github.com/tommylay1902/medibrain/internal/api/domain/document"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 	"github.com/tommylay1902/medibrain/internal/api/domain/note"
+	"github.com/tommylay1902/medibrain/internal/api/domain/tag"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
@@ -16,16 +17,17 @@ func main() {
 	db := database.NewDB()
 	dmr := metadata.NewRepo(db)
 	nr := note.NewNoteRepo(db)
+	tr := tag.NewTagRepo(db)
 
 	dms := metadata.NewService(dmr)
 	ns := note.NewNoteService(nr)
-
+	ts := tag.NewTagService(tr)
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()
 
 	dps := document.NewService(dmr, swc, sc, dms, rag)
 
-	mux := api.NewMux(dms, dps, ns)
+	mux := api.NewMux(dms, dps, ns, ts)
 
 	server := api.NewServer(":8080", mux)
 	server.StartServer()

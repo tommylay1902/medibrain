@@ -15,3 +15,7 @@ func (ts *TagService) List() (TagList, error) {
 
 	return tags, err
 }
+
+func (ts *TagService) Create(tag *Tag) error {
+	return ts.repo.Create(tag)
+}
