@@ -66,6 +66,7 @@ func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags 
 	if err != nil {
 		return fmt.Errorf("error creating notes: %v", err)
 	}
+
 	results, err := ns.repo.CreateTagBatch(ctx, tags)
 	if err != nil {
 		return fmt.Errorf("error creating tag batch: %v", err)

@@ -12,17 +12,17 @@ import (
 )
 
 type NoteRepo struct {
-	uow *database.SqlxUnitOfWorkFactory
+	uow database.UnitOfWorkFactory
 }
 
-func NewNoteRepo(uow *database.SqlxUnitOfWorkFactory) *NoteRepo {
+func NewNoteRepo(uow database.UnitOfWorkFactory) *NoteRepo {
 	return &NoteRepo{
 		uow: uow,
 	}
 }
 
 func (nr *NoteRepo) List(ctx context.Context) (NoteList, error) {
-	db := database.GetDB(ctx, nr.uow)
+	db := nr.uow.GetDB(ctx)
 
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {
@@ -48,7 +48,7 @@ func (nr *NoteRepo) List(ctx context.Context) (NoteList, error) {
 }
 
 func (nr *NoteRepo) ListWithKeywords(ctx context.Context) (*NoteWithTags, error) {
-	db := database.GetDB(ctx, nr.uow)
+	db := nr.uow.GetDB(ctx)
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {
 		return nil, errors.New("invalid database connection")
@@ -98,7 +98,7 @@ func (nr *NoteRepo) ListWithKeywords(ctx context.Context) (*NoteWithTags, error)
 }
 
 func (nr *NoteRepo) CreateNote(ctx context.Context, note *Note) (*uuid.UUID, error) {
-	db := database.GetDB(ctx, nr.uow)
+	db := nr.uow.GetDB(ctx)
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {
 		return nil, errors.New("invalid database connection")
@@ -131,7 +131,7 @@ func (nr *NoteRepo) CreateNote(ctx context.Context, note *Note) (*uuid.UUID, err
 }
 
 func (nr *NoteRepo) CreateTagBatch(ctx context.Context, tags []string) ([]tag.Tag, error) {
-	db := database.GetDB(ctx, nr.uow)
+	db := nr.uow.GetDB(ctx)
 
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {
@@ -166,7 +166,7 @@ func (nr *NoteRepo) CreateTagBatch(ctx context.Context, tags []string) ([]tag.Ta
 }
 
 func (nr *NoteRepo) LinkNoteWithTags(ctx context.Context, noteId uuid.UUID, tagIds []*uuid.UUID) error {
-	db := database.GetDB(ctx, nr.uow)
+	db := nr.uow.GetDB(ctx)
 
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {

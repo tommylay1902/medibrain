@@ -8,21 +8,29 @@ import (
 
 type txKey struct{}
 
+// UnitOfWorkFactory is the factory/creator interface
+// begin is how a transaction/unit of work is created
+type UnitOfWorkFactory interface {
+	Begin(context.Context) (UnitOfWork, context.Context, error)
+	GetDB(context.Context) any
+}
+
+// UnitOfWork is the product interface
 type UnitOfWork interface {
 	Commit() error
 	Rollback() error
 }
 
-type UnitOfWorkFactory interface {
-	Begin(context.Context) (UnitOfWork, context.Context, error)
-}
-
+// SqlxUnitOfWorkFactory is the concrete factory/creator
 type SqlxUnitOfWorkFactory struct {
 	db *sqlx.DB
 }
 
-func NewUnitOfWorkFactory(db *sqlx.DB) *SqlxUnitOfWorkFactory {
-	return &SqlxUnitOfWorkFactory{db: db}
+func (f *SqlxUnitOfWorkFactory) GetDB(ctx context.Context) any {
+	if tx, ok := ctx.Value(txKey{}).(*sqlx.Tx); ok {
+		return tx
+	}
+	return f.db
 }
 
 func (f *SqlxUnitOfWorkFactory) Begin(ctx context.Context) (UnitOfWork, context.Context, error) {
@@ -37,6 +45,11 @@ func (f *SqlxUnitOfWorkFactory) Begin(ctx context.Context) (UnitOfWork, context.
 	return uow, ctx, nil
 }
 
+func NewUnitOfWorkFactory(db *sqlx.DB) *SqlxUnitOfWorkFactory {
+	return &SqlxUnitOfWorkFactory{db: db}
+}
+
+// SqlxUnitOfWork is the concrete product
 type SqlxUnitOfWork struct {
 	tx *sqlx.Tx
 }
@@ -49,13 +62,6 @@ func (u *SqlxUnitOfWork) Rollback() error {
 	return u.tx.Rollback()
 }
 
-func GetDB(ctx context.Context, factory *SqlxUnitOfWorkFactory) any {
-	if tx, ok := ctx.Value(txKey{}).(*sqlx.Tx); ok {
-		return tx
-	}
-	return factory.GetDB()
-}
-
-func (f *SqlxUnitOfWorkFactory) GetDB() *sqlx.DB {
+func (f *SqlxUnitOfWorkFactory) getDB() *sqlx.DB {
 	return f.db
 }
