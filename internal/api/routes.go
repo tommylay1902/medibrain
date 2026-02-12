@@ -15,7 +15,9 @@ type Mux struct {
 
 // NewMux creates and configures the main router for the API application.
 // It organizes routes by domain, where each domain defines its specific routes
-// (e.g., metadata domain defines "GET /metadata"). These domain-specific
+// This function will add the base domain path to each route but each domain
+// will implement more specific paths if needed
+// (e.g., metadata domain defines "GET /"). These domain-specific
 // routes are then initialized here and mounted under the "/api/v1/" prefix.
 //
 // Returns the configured main router with all routes ready for server use.
@@ -26,12 +28,12 @@ func NewMux(dms *metadata.MetadataService, dps *document.DocumentPipelineService
 	apiV1 := http.NewServeMux()
 
 	// Get domain muxes
-	documentMetaMux := metadata.NewRoutes(dms)
+	metadataMux := metadata.NewRoutes(dms)
 	documentPipelineMux := document.NewRoutes(dps)
 	noteMux := note.NewNoteRoutes(ns)
 
 	// Mount with prefixes
-	mountSubrouter(apiV1, "metadata", documentMetaMux.Mux)
+	mountSubrouter(apiV1, "metadata", metadataMux.Mux)
 	mountSubrouter(apiV1, "document", documentPipelineMux.Mux)
 	mountSubrouter(apiV1, "note", noteMux.Mux)
 	apiV1Handler := applyMiddleware(http.StripPrefix("/api/v1", apiV1), CorsMiddleware)
@@ -63,13 +65,16 @@ func mountSubrouter(parent *http.ServeMux, prefix string, child *http.ServeMux) 
 		}
 
 		r2 := *r
-		r2.URL = &(*r.URL)
+
+		urlCopy := *r.URL
+		urlCopy.Path = strippedPath
+		r2.URL = &urlCopy
 		r2.URL.Path = strippedPath
+		r2.Header = r.Header.Clone()
 
 		child.ServeHTTP(w, &r2)
 	})
 
 	parent.Handle(prefix, handler)
-	parent.Handle(prefix+"/", handler) // Also handle with trailing slash
-	parent.Handle(prefix+"/*", handler)
+	parent.Handle(prefix+"/", handler)
 }

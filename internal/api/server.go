@@ -1,3 +1,4 @@
+// Package api provides the HTTP transport layer.
 package api
 
 import (
