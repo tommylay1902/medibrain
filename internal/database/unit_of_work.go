@@ -61,7 +61,3 @@ func (u *SqlxUnitOfWork) Commit() error {
 func (u *SqlxUnitOfWork) Rollback() error {
 	return u.tx.Rollback()
 }
-
-func (f *SqlxUnitOfWorkFactory) getDB() *sqlx.DB {
-	return f.db
-}

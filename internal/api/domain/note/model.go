@@ -18,7 +18,7 @@ type NoteJoinTag struct {
 	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
 	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
 	Content          string     `json:"content" db:"content"`
-	Keyword          string     `json:"keyword"`
+	Tag              string     `json:"name" db:"tag"`
 }
 
 type NoteWithTags struct {
@@ -26,7 +26,15 @@ type NoteWithTags struct {
 	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
 	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
 	Content          string     `json:"content" db:"content"`
-	Keywords         []*string  `json:"keywords"`
+	Tags             []*string  `json:"tags"`
 }
 
-type NoteList []*Note
+type Tag struct {
+	ID   *uuid.UUID `json:"id" db:"id"`
+	Name string     `json:"name" db:"name"`
+}
+
+type (
+	NoteList []*Note
+	TagList  []*Tag
+)

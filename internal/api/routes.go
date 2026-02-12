@@ -7,7 +7,6 @@ import (
 	"github.com/tommylay1902/medibrain/internal/api/domain/document"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 	"github.com/tommylay1902/medibrain/internal/api/domain/note"
-	"github.com/tommylay1902/medibrain/internal/api/domain/tag"
 )
 
 type Mux struct {
@@ -20,7 +19,7 @@ type Mux struct {
 // routes are then initialized here and mounted under the "/api/v1/" prefix.
 //
 // Returns the configured main router with all routes ready for server use.
-func NewMux(dms *metadata.MetadataService, dps *document.DocumentPipelineService, ns *note.NoteService, ts *tag.TagService) *Mux {
+func NewMux(dms *metadata.MetadataService, dps *document.DocumentPipelineService, ns *note.NoteService) *Mux {
 	mainMux := http.NewServeMux()
 
 	// Create API v1 subrouter
@@ -30,12 +29,11 @@ func NewMux(dms *metadata.MetadataService, dps *document.DocumentPipelineService
 	documentMetaMux := metadata.NewRoutes(dms)
 	documentPipelineMux := document.NewRoutes(dps)
 	noteMux := note.NewNoteRoutes(ns)
-	tagMux := tag.NewTagRoutes(ts)
+
 	// Mount with prefixes
 	mountSubrouter(apiV1, "metadata", documentMetaMux.Mux)
 	mountSubrouter(apiV1, "document", documentPipelineMux.Mux)
 	mountSubrouter(apiV1, "note", noteMux.Mux)
-	mountSubrouter(apiV1, "tag", tagMux.Mux)
 	apiV1Handler := applyMiddleware(http.StripPrefix("/api/v1", apiV1), CorsMiddleware)
 	mainMux.Handle("/api/v1/", apiV1Handler)
 

@@ -29,7 +29,7 @@ func (ns *NoteService) List(ctx context.Context) (NoteList, error) {
 	return notes, err
 }
 
-func (ns *NoteService) ListWithKeywords(ctx context.Context) (*NoteWithTags, error) {
+func (ns *NoteService) ListWithKeywords(ctx context.Context) ([]*NoteWithTags, error) {
 	result, err := ns.repo.ListWithKeywords(ctx)
 	return result, err
 }

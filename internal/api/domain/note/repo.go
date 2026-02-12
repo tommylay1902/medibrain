@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/lib/pq"
-	"github.com/tommylay1902/medibrain/internal/api/domain/tag"
 	"github.com/tommylay1902/medibrain/internal/database"
 )
 
@@ -47,7 +46,7 @@ func (nr *NoteRepo) List(ctx context.Context) (NoteList, error) {
 	return notes, nil
 }
 
-func (nr *NoteRepo) ListWithKeywords(ctx context.Context) (*NoteWithTags, error) {
+func (nr *NoteRepo) ListWithKeywords(ctx context.Context) ([]*NoteWithTags, error) {
 	db := nr.uow.GetDB(ctx)
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {
@@ -57,11 +56,16 @@ func (nr *NoteRepo) ListWithKeywords(ctx context.Context) (*NoteWithTags, error)
 	query := `
 		SELECT n.id AS id, 
 			n.creation_date AS creation_date, 
-			n.modification_date as modification_date n.content as content, 
-			nk.keyword as keyword 
+			n.modification_date as modification_date,
+			n.content as content, 
+			t.name as tag
+
 		FROM note AS n 
-		INNER JOIN note_keyword AS nk 
-		ON n.id = nk.note_id`
+		INNER JOIN note_tag as nt
+		ON n.id = nt.note_id
+		INNER JOIN tag AS t 
+		ON t.id = nt.tag_id
+		 `
 
 	rows, err := ext.QueryxContext(ctx, query)
 	if err != nil {
@@ -82,19 +86,28 @@ func (nr *NoteRepo) ListWithKeywords(ctx context.Context) (*NoteWithTags, error)
 		return nil, nil
 	}
 
-	noteKeywords := &NoteWithTags{
-		ID:               joinResult[0].ID,
-		CreationDate:     joinResult[0].CreationDate,
-		ModificationDate: joinResult[0].ModificationDate,
-		Content:          joinResult[0].Content,
-		Keywords:         make([]*string, 0, len(joinResult)),
+	noteMap := make(map[uuid.UUID]*NoteWithTags)
+
+	for _, row := range joinResult {
+		note, exists := noteMap[*row.ID]
+		if !exists {
+			noteMap[*row.ID] = &NoteWithTags{
+				ID:               row.ID,
+				CreationDate:     row.CreationDate,
+				ModificationDate: row.ModificationDate,
+				Content:          row.Content,
+				Tags:             []*string{&row.Tag},
+			}
+		} else {
+			note.Tags = append(note.Tags, &row.Tag)
+		}
 	}
 
-	for i := range joinResult {
-		noteKeywords.Keywords = append(noteKeywords.Keywords, &joinResult[i].Keyword)
+	result := make([]*NoteWithTags, 0, len(noteMap))
+	for _, note := range noteMap {
+		result = append(result, note)
 	}
-
-	return noteKeywords, nil
+	return result, nil
 }
 
 func (nr *NoteRepo) CreateNote(ctx context.Context, note *Note) (*uuid.UUID, error) {
@@ -130,7 +143,7 @@ func (nr *NoteRepo) CreateNote(ctx context.Context, note *Note) (*uuid.UUID, err
 	return &uuid, err
 }
 
-func (nr *NoteRepo) CreateTagBatch(ctx context.Context, tags []string) ([]tag.Tag, error) {
+func (nr *NoteRepo) CreateTagBatch(ctx context.Context, tags []string) ([]Tag, error) {
 	db := nr.uow.GetDB(ctx)
 
 	ext, ok := db.(sqlx.ExtContext)
@@ -152,9 +165,9 @@ func (nr *NoteRepo) CreateTagBatch(ctx context.Context, tags []string) ([]tag.Ta
 	}
 	defer rows.Close()
 
-	var resultTags []tag.Tag
+	var resultTags []Tag
 	for rows.Next() {
-		var tag tag.Tag
+		var tag Tag
 		if err := rows.StructScan(&tag); err != nil {
 			return nil, err
 		}
