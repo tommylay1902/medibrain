@@ -15,12 +15,13 @@ import (
 func main() {
 	rag := rag.NewRag()
 	db := database.NewDB()
+	uowFactory := database.NewUnitOfWorkFactory(db)
 	dmr := metadata.NewRepo(db)
-	nr := note.NewNoteRepo(db)
+	nr := note.NewNoteRepo(uowFactory)
 	tr := tag.NewTagRepo(db)
 
 	dms := metadata.NewService(dmr)
-	ns := note.NewNoteService(nr)
+	ns := note.NewNoteService(nr, uowFactory)
 	ts := tag.NewTagService(tr)
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()

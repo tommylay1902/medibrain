@@ -11,6 +11,7 @@ func NewNoteRoutes(ns *NoteService) *Route {
 	handler := NewNoteHandler(ns)
 	mux.HandleFunc("GET /", handler.List)
 	mux.HandleFunc("GET /keywords", handler.ListWithKeywords)
+	mux.HandleFunc("POST /", handler.CreateNote)
 	route := &Route{
 		Mux: mux,
 	}

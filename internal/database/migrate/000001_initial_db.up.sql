@@ -12,14 +12,14 @@ CREATE TABLE metadata(
 
 CREATE TABLE note(
 	id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-	creation_date TEXT NOT NULL,
-	modification_date TEXT NOT NULL,
+	creation_date TIMESTAMP NOT NULL DEFAULT NOW(),
+	modification_date TIMESTAMP NOT NULL DEFAULT NOW(),
 	content TEXT
 );
 
 CREATE TABLE tag(
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  name TEXT 
+  name TEXT UNIQUE
 );
 
 CREATE TABLE note_tag(
