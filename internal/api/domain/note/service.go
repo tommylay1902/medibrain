@@ -84,3 +84,12 @@ func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags 
 
 	return uow.Commit()
 }
+
+func (ns *NoteService) CreateTag(ctx context.Context, tag Tag) (*Tag, error) {
+	id, err := ns.repo.CreateTag(ctx, tag)
+	return id, err
+}
+
+func (ns *NoteService) ListTag(ctx context.Context) (TagList, error) {
+	return ns.repo.ListTags(ctx)
+}

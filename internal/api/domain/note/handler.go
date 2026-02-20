@@ -2,8 +2,11 @@ package note
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/lib/pq"
 )
 
 type NoteHandler struct {
@@ -44,8 +47,23 @@ func (nh *NoteHandler) ListWithKeywords(w http.ResponseWriter, req *http.Request
 	}
 }
 
+func (nh *NoteHandler) ListTags(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+	tags, err := nh.noteService.ListTag(ctx)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(tags)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
+}
+
 type CreateNoteBody struct {
-	Note Note     `json:"note"`
+	Note
 	Tags []string `json:"tags"`
 }
 
@@ -65,4 +83,34 @@ func (nh *NoteHandler) CreateNote(w http.ResponseWriter, req *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusCreated)
+}
+
+func (nh *NoteHandler) CreateTag(w http.ResponseWriter, req *http.Request) {
+	ctx := req.Context()
+
+	var body Tag
+	err := json.NewDecoder(req.Body).Decode(&body)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Bad request: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	tag, err := nh.noteService.CreateTag(ctx, body)
+	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			fmt.Println("test err")
+			http.Error(w, fmt.Sprintf("tag already exists: %v", pqErr), http.StatusConflict)
+			return
+		}
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(tag)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
 }

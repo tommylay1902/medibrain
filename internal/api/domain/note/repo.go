@@ -3,6 +3,7 @@ package note
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -193,4 +194,64 @@ func (nr *NoteRepo) LinkNoteWithTags(ctx context.Context, noteId uuid.UUID, tagI
 	_, err := ext.ExecContext(ctx, query, noteId, pq.Array(tagIds))
 
 	return err
+}
+
+func (nr *NoteRepo) ListTags(ctx context.Context) (TagList, error) {
+	db := nr.uow.GetDB(ctx)
+
+	ext, ok := db.(sqlx.ExtContext)
+
+	if !ok {
+		return nil, errors.New("invalid database connection")
+	}
+
+	query := `SELECT * FROM tag`
+	rows, err := ext.QueryxContext(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var tags TagList
+	for rows.Next() {
+		var tag Tag
+		if err := rows.StructScan(&tag); err != nil {
+			return nil, err
+		}
+		tags = append(tags, &tag)
+	}
+	return tags, nil
+}
+
+func (nr *NoteRepo) CreateTag(ctx context.Context, tag Tag) (*Tag, error) {
+	db := nr.uow.GetDB(ctx)
+
+	ext, ok := db.(sqlx.ExtContext)
+
+	if !ok {
+		return nil, errors.New("invalid database connection")
+	}
+
+	query := `
+		INSERT INTO tag (name) values($1)
+		RETURNING id, name
+	`
+	result, err := ext.QueryxContext(ctx, query, tag.Name)
+	if err != nil {
+		fmt.Println("error querying db")
+		return nil, err
+	}
+
+	var createdTag Tag
+	validRow := result.Next()
+	if !validRow {
+		return nil, errors.New("no tag not created succesfully")
+	}
+
+	err = result.StructScan(&createdTag)
+	if err != nil {
+		fmt.Println("error scanning tag")
+		return nil, err
+	}
+
+	return &createdTag, nil
 }

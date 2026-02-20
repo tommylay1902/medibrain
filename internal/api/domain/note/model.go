@@ -8,15 +8,15 @@ import (
 
 type Note struct {
 	ID               *uuid.UUID `json:"id" db:"id"`
-	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
-	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
+	CreationDate     *time.Time `json:"creationDate" db:"creation_date"`
+	ModificationDate *time.Time `json:"modificationDate" db:"modification_date"`
 	Content          string     `json:"content" db:"content"`
 }
 
 type NoteJoinTag struct {
 	ID               *uuid.UUID `json:"id" db:"id"`
-	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
-	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
+	CreationDate     *time.Time `json:"creationDate" db:"creation_date"`
+	ModificationDate *time.Time `json:"modificationDate" db:"modification_date"`
 	Content          string     `json:"content" db:"content"`
 	Tag              string     `json:"name" db:"tag"`
 }

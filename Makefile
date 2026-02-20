@@ -44,7 +44,7 @@ db-migrate-up: db-wait
 	fi
 
 db-migrate-down: db-wait
-	@echo "Reverting last migration..."
+	@echo "reverting last migration..."
 	@if [ -d "internal/database/migrate" ]; then \
 		cd ./internal/database/migrate && migrate -database $(PSQL_URI) -path . down $(STEPS); \
 	else \
