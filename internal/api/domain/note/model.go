@@ -19,6 +19,7 @@ type NoteJoinTag struct {
 	CreationDate     *time.Time `json:"creationDate" db:"creation_date"`
 	ModificationDate *time.Time `json:"modificationDate" db:"modification_date"`
 	Content          string     `json:"content" db:"content"`
+	Title            string     `json:"title" db:"title"`
 	Tag              string     `json:"name" db:"tag"`
 }
 

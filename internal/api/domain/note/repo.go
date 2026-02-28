@@ -59,8 +59,8 @@ func (nr *NoteRepo) ListWithKeywords(ctx context.Context) ([]*NoteWithTags, erro
 			n.creation_date AS creation_date, 
 			n.modification_date as modification_date,
 			n.content as content, 
+			n.title as title,
 			t.name as tag
-
 		FROM note AS n 
 		INNER JOIN note_tag as nt
 		ON n.id = nt.note_id
@@ -97,6 +97,7 @@ func (nr *NoteRepo) ListWithKeywords(ctx context.Context) ([]*NoteWithTags, erro
 				CreationDate:     row.CreationDate,
 				ModificationDate: row.ModificationDate,
 				Content:          row.Content,
+				Title:            row.Title,
 				Tags:             []*string{&row.Tag},
 			}
 		} else {
