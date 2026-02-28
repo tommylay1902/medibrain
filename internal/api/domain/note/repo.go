@@ -122,16 +122,18 @@ func (nr *NoteRepo) CreateNote(ctx context.Context, note *Note) (*uuid.UUID, err
     INSERT INTO note (
         creation_date, 
         modification_date, 
-        content
+        content,
+				title
     ) VALUES (
         $1, 
         $2, 
-        $3 
+        $3,
+				$4
     )
 		RETURNING id
 	`
 	var uuid uuid.UUID
-	row, err := ext.QueryContext(ctx, query, note.CreationDate, note.ModificationDate, note.Content)
+	row, err := ext.QueryContext(ctx, query, note.CreationDate, note.ModificationDate, note.Content, note.Title)
 	if err != nil {
 		return nil, err
 	}

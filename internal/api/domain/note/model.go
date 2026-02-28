@@ -26,6 +26,7 @@ type NoteWithTags struct {
 	ID               *uuid.UUID `json:"id" db:"id"`
 	CreationDate     *time.Time `json:"creation_date" db:"creation_date"`
 	ModificationDate *time.Time `json:"modification_date" db:"modification_date"`
+	Title            string     `json:"title" db:"title"`
 	Content          string     `json:"content" db:"content"`
 	Tags             []*string  `json:"tags"`
 }
