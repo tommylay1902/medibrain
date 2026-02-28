@@ -20,6 +20,7 @@ help:
 	@echo "  make db-create-migrate MIGRATION_NAME=migration_name - Create a new migration files (up and down)"
 	@echo "  make db-migrate-up STEPS=<number>  - run migrations by step (default is 1, you can provide empty after argument to up all )"
 	@echo "  make db-migrate-down STEPS=<number> - down migrations by step (default is 1, you can provide empty space after argument to down all)"
+	@echo "  make db-migrate-force - force migration to last clean migrate"
 	@echo "  make qdrant-seed - Drops any existing collections and reconstruct collections from go"
 	@echo "  make db-wait     - Wait for database to be ready"
 	@echo "  make db-seed     - Seed the database with data"

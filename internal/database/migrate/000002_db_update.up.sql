@@ -1,0 +1,1 @@
+ALTER TABLE note ADD COLUMN title TEXT NOT NULL DEFAULT 'test';  

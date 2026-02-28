@@ -283,10 +283,12 @@ func getEmbedding(text string) ([]float32, error) {
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		fmt.Println("error hit in calling")
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Println("error hit in calling ollama")
 		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
@@ -295,6 +297,5 @@ func getEmbedding(text string) ([]float32, error) {
 	if err := json.Unmarshal(body, &embeddingResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-
 	return embeddingResp.Embedding, nil
 }

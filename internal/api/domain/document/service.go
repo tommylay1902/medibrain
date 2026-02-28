@@ -55,6 +55,7 @@ func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []by
 	dm.PdfFid = assignRes.Fid
 	err = dps.seaweedClient.StoreFile(assignRes.PublicURL, assignRes.Fid, dmBytes, header)
 	if err != nil {
+		fmt.Println("error storing file")
 		return nil, err
 	}
 
@@ -62,7 +63,6 @@ func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []by
 	if err != nil {
 		cleanupErrors := dps.cleanupResources(assignRes.PublicURL, dm.PdfFid)
 		if len(cleanupErrors) > 0 {
-
 			allErrors := append([]error{err}, cleanupErrors...)
 			return nil, errors.Join(allErrors...)
 		}

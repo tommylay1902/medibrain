@@ -17,7 +17,7 @@ func NewRepo(db *sqlx.DB) *MetadataRepo {
 func (dmr *MetadataRepo) List() (MetadataList, error) {
 	var results MetadataList
 
-	err := dmr.db.Select(&results, "SELECT * FROM document_meta ")
+	err := dmr.db.Select(&results, "SELECT * FROM metadata ")
 	if err != nil {
 		return nil, err
 	}

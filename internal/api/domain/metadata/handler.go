@@ -17,6 +17,7 @@ func NewHandler(service *MetadataService) *Handler {
 func (h *Handler) List(w http.ResponseWriter, req *http.Request) {
 	pdfs, err := h.service.List()
 	if err != nil {
+		fmt.Println(err)
 		fmt.Println("error getting pdfs list")
 		w.WriteHeader(500)
 		return

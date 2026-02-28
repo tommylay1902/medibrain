@@ -184,7 +184,8 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("not expected status code")
+		fmt.Println(string(respBody))
+		return nil, errors.New("generating thumbnail, status not expected status code")
 	}
 
 	return respBody, nil
@@ -195,7 +196,7 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 
 	pdfReader := bytes.NewReader(pdfBytes)
 	tee := io.TeeReader(pdfReader, &preservedBuf)
-	stirlingURL := fmt.Sprintf("%s/api/v1/misc/update-metadata", sc.BaseURL)
+	stirlingURL := fmt.Sprintf("%s/misc/update-metadata", sc.BaseURL)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 

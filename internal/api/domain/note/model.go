@@ -10,6 +10,7 @@ type Note struct {
 	ID               *uuid.UUID `json:"id" db:"id"`
 	CreationDate     *time.Time `json:"creationDate" db:"creation_date"`
 	ModificationDate *time.Time `json:"modificationDate" db:"modification_date"`
+	Title            string     `json:"title" db:"title"`
 	Content          string     `json:"content" db:"content"`
 }
 
