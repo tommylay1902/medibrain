@@ -7,14 +7,18 @@ import (
 	"net/http"
 
 	"github.com/lib/pq"
+	"github.com/tommylay1902/medibrain/internal/client/rag"
 )
 
 type NoteHandler struct {
 	noteService *NoteService
+	ragClient   *rag.Rag
 }
 
 func NewNoteHandler(noteService *NoteService) *NoteHandler {
-	return &NoteHandler{noteService: noteService}
+	return &NoteHandler{
+		noteService: noteService,
+	}
 }
 
 func (nh *NoteHandler) List(w http.ResponseWriter, req *http.Request) {

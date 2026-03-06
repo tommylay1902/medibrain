@@ -1,6 +1,8 @@
 package note
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type Route struct {
 	Mux *http.ServeMux

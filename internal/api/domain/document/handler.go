@@ -11,10 +11,12 @@ import (
 
 	"github.com/ledongthuc/pdf"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
+	"github.com/tommylay1902/medibrain/internal/client/rag"
 )
 
 type DocumentPipelineHandler struct {
-	service *DocumentPipelineService
+	service   *DocumentPipelineService
+	ragClient *rag.Rag
 }
 
 func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
@@ -132,6 +134,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 	}
 }
 
+// TODO: need to revise this looks like service logic is leaking into handler logic
 func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, req *http.Request) {
 	err := req.ParseMultipartForm(2 << 20)
 	if err != nil {

@@ -127,6 +127,39 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 	return nil
 }
 
+func (r *Rag) StoreNote(content string, title string) error {
+	// document := schema.Document{
+	// 	PageContent: doc,
+	// }
+	// chunks, _ := r.splitter.SplitText(document.PageContent)
+	// points := make([]*qdrant.PointStruct, 0, len(chunks))
+	// for _, chunk := range chunks {
+	// 	vec, err := getEmbedding(chunk)
+	// 	if err != nil {
+	// 		continue
+	// 	}
+	// 	payload := qdrant.NewValueMap(map[string]any{
+	// 		"fid":          fid,
+	// 		"title":        docTitle,
+	// 		"content":      chunk,
+	// 		"uploadDate":   docUploadDate,
+	// 		"creationDate": docCreationDate,
+	// 		"keywords":     keywords,
+	// 	})
+	// 	points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
+	// }
+	// _, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+	// 	CollectionName: "documents",
+	// 	Points:         points,
+	// })
+	// if err != nil {
+	// 	return err
+	// }
+	//
+	// return nil
+	return nil
+}
+
 type Response struct {
 	Content  string `json:"content"`
 	Fid      string `json:"fid"`
@@ -292,7 +325,6 @@ func getEmbedding(text string) ([]float32, error) {
 		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	// 4. Parse the embedding
 	var embeddingResp EmbeddingResponse
 	if err := json.Unmarshal(body, &embeddingResp); err != nil {
 		return nil, fmt.Errorf("failed to parse response: %w", err)
