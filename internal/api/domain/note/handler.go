@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 
 	"github.com/lib/pq"
@@ -25,12 +26,14 @@ func (nh *NoteHandler) List(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	notes, err := nh.noteService.List(ctx)
 	if err != nil {
+		slog.Error("error listing note", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(notes)
 	if err != nil {
+		slog.Error("error encoding notes", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -40,12 +43,14 @@ func (nh *NoteHandler) ListWithKeywords(w http.ResponseWriter, req *http.Request
 	ctx := req.Context()
 	notesWithKeyword, err := nh.noteService.ListWithKeywords(ctx)
 	if err != nil {
+		slog.Error("error listing notes with keywords", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(notesWithKeyword)
 	if err != nil {
+		slog.Error("error encoding notes with keywords", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -55,12 +60,14 @@ func (nh *NoteHandler) ListTags(w http.ResponseWriter, req *http.Request) {
 	ctx := req.Context()
 	tags, err := nh.noteService.ListTag(ctx)
 	if err != nil {
+		slog.Error("error getting tags", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	err = json.NewEncoder(w).Encode(tags)
 	if err != nil {
+		slog.Error("error encoding tags", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -77,11 +84,13 @@ func (nh *NoteHandler) CreateNote(w http.ResponseWriter, req *http.Request) {
 	var body CreateNoteBody
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Bad request error; %v", err), http.StatusBadRequest)
+		slog.Error("can't parse body", slog.Any("err", err))
+		http.Error(w, fmt.Sprintf("Bad request error"), http.StatusBadRequest)
 		return
 	}
 	err = nh.noteService.CreateNoteWithTags(ctx, &body.Note, body.Tags)
 	if err != nil {
+		slog.Error("error creating note with tags", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -95,7 +104,8 @@ func (nh *NoteHandler) CreateTag(w http.ResponseWriter, req *http.Request) {
 	var body Tag
 	err := json.NewDecoder(req.Body).Decode(&body)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Bad request: %v", err), http.StatusBadRequest)
+		slog.Error("parse body err", slog.Any("err", err))
+		http.Error(w, fmt.Sprintf("Bad request"), http.StatusBadRequest)
 		return
 	}
 
@@ -103,10 +113,11 @@ func (nh *NoteHandler) CreateTag(w http.ResponseWriter, req *http.Request) {
 	if err != nil {
 		var pqErr *pq.Error
 		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
-			fmt.Println("test err")
-			http.Error(w, fmt.Sprintf("tag already exists: %v", pqErr), http.StatusConflict)
+			slog.Error("unique constraint error", slog.Any("err", err))
+			http.Error(w, fmt.Sprintf("tag already exists"), http.StatusConflict)
 			return
 		}
+		slog.Error("error creating tag", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -114,6 +125,7 @@ func (nh *NoteHandler) CreateTag(w http.ResponseWriter, req *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 	err = json.NewEncoder(w).Encode(tag)
 	if err != nil {
+		slog.Error("error encoding tag", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}

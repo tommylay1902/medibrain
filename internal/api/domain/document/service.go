@@ -11,7 +11,6 @@ import (
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
 )
 
-// TODO: passing in shouldnt be pointer maybe? need to do research
 type DocumentPipelineService struct {
 	dmRepo         *metadata.MetadataRepo
 	stirlingClient *stirling.StirlingClient
@@ -39,26 +38,22 @@ func NewService(
 func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []byte, header *multipart.FileHeader, apiKey string, updateDM *metadata.Metadata) (*metadata.Metadata, error) {
 	dmBytes, err := dps.stirlingClient.UpdateMetaData(pdfBytes, apiKey, updateDM)
 	if err != nil {
-		fmt.Println("error updating document metadata", err)
 		return nil, err
 	}
 
 	dm, err := dps.stirlingClient.GetMetaData(dmBytes, header, apiKey)
 	if err != nil {
-		fmt.Println("error getting new metadata")
 		return nil, err
 	}
 
 	assignRes, err := dps.seaweedClient.Assign()
 	if err != nil {
-		fmt.Println("error getting seaweed space to store file")
 		return nil, err
 	}
 
 	dm.PdfFid = assignRes.Fid
 	err = dps.seaweedClient.StoreFile(assignRes.PublicURL, assignRes.Fid, dmBytes, header)
 	if err != nil {
-		fmt.Println("error storing file")
 		return nil, err
 	}
 
