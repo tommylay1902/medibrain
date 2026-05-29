@@ -54,6 +54,6 @@ func (s *Server) StartServer() {
 		if err := s.Server.Shutdown(ctx); err != nil {
 			log.Fatalf("Server shutdown failed: %v", err)
 		}
-		slog.Info("message", "Server gracefully stopped")
+		slog.Info("Server gracefully stopped")
 	}
 }

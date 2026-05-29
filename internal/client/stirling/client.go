@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"mime/multipart"
 	"net/http"
 
@@ -34,17 +35,20 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 
 	part, err := writer.CreateFormFile("fileInput", header.Filename)
 	if err != nil {
+		slog.Error("create form file error", slog.Any("err", err))
 		return nil, fmt.Errorf("create form file error: %v", err)
 	}
 
 	_, err = io.Copy(part, tee)
 	if err != nil {
+		slog.Error("write file error", slog.Any("err", err))
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
 
 	writer.WriteField("outputFormat", "txt")
 	err = writer.Close()
 	if err != nil {
+		slog.Error("close writer error", slog.Any("err", err))
 		return nil, fmt.Errorf("close writer error: %v", err)
 	}
 
@@ -52,6 +56,7 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 		fmt.Sprintf("%s/convert/pdf/text", sc.BaseURL),
 		body)
 	if err != nil {
+		slog.Error("error creating request object", slog.Any("err", err))
 		return nil, err
 	}
 
@@ -59,17 +64,19 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 	req.Header.Add("X-API-KEY", apiKey)
 	resp, err := sc.Client.Do(req)
 	if err != nil {
+		slog.Error("error executing request", slog.Any("err", err))
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		slog.Error("error reading response body", slog.Any("err", err))
 		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Println("error not getting expected status code in get text from pdf")
+		slog.Error(fmt.Sprintf("expected status code 200, actual status code: %v", resp.StatusCode))
 		return nil, errors.New("not expected status code")
 	}
 	result := string(respBody)
@@ -86,16 +93,19 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 
 	part, err := writer.CreateFormFile("fileInput", header.Filename)
 	if err != nil {
+		slog.Error("create form file error", slog.Any("err", err))
 		return nil, fmt.Errorf("create form file error: %v", err)
 	}
 
 	_, err = io.Copy(part, tee)
 	if err != nil {
+		slog.Error("write file error", slog.Any("err", err))
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
 
 	err = writer.Close()
 	if err != nil {
+		slog.Error("close writer error", slog.Any("err", err))
 		return nil, fmt.Errorf("close writer error: %v", err)
 	}
 
@@ -105,6 +115,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 		fmt.Sprintf("%s/analysis/document-properties", sc.BaseURL),
 		body)
 	if err != nil {
+		slog.Error("error creating request object", slog.Any("err", err))
 		return nil, err
 	}
 
@@ -112,23 +123,26 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	req.Header.Add("X-API-KEY", apiKey)
 	resp, err := sc.Client.Do(req)
 	if err != nil {
+		slog.Error("error executing request", slog.Any("err", err))
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		slog.Error("error reading response body", slog.Any("err", err))
 		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Println("error not expected status code in GetMetaData")
+		slog.Error(fmt.Sprintf("expected status code 200, actual status code: %v", resp.StatusCode))
 		return nil, errors.New("not expected status code")
 	}
 
 	var dm metadata.Metadata
 	err = json.Unmarshal(respBody, &dm)
 	if err != nil {
+		slog.Error("error unmarshaling response body")
 		return nil, err
 	}
 
@@ -151,6 +165,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 
 	_, err = io.Copy(part, tee)
 	if err != nil {
+		slog.Error("write file error", slog.Any("err", err))
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
 
@@ -161,6 +176,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 	writer.WriteField("dpi", "300")
 	err = writer.Close()
 	if err != nil {
+		slog.Error("close writer error", slog.Any("err", err))
 		return nil, fmt.Errorf("close writer error: %v", err)
 	}
 
@@ -169,6 +185,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 		stirlingURL,
 		body)
 	if err != nil {
+		slog.Error("error creating request body", slog.Any("err", err))
 		return nil, err
 	}
 
@@ -176,16 +193,19 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 	req.Header.Add("X-API-Key", apiKey)
 	resp, err := sc.Client.Do(req)
 	if err != nil {
+		slog.Error("error execiting request", slog.Any("err", err))
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		slog.Error("error reading request body", slog.Any("err", err))
 		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
+		slog.Error(fmt.Sprintf("expected status code 200, actual status code: %v", resp.StatusCode))
 		return nil, errors.New("generating thumbnail, status not expected status code")
 	}
 
@@ -203,11 +223,13 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 
 	part, err := writer.CreateFormFile("fileInput", "")
 	if err != nil {
+		slog.Error("create form file error", slog.Any("err", err))
 		return nil, fmt.Errorf("create form file error: %v", err)
 	}
 
 	_, err = io.Copy(part, tee)
 	if err != nil {
+		slog.Error("error copying from tee reader", slog.Any("err", err))
 		return nil, fmt.Errorf("write file error: %v", err)
 	}
 
@@ -231,10 +253,12 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 	writer.WriteField("keywords", dm.Keywords)
 
 	writer.Close()
+
 	req, err := http.NewRequest("POST",
 		stirlingURL,
 		body)
 	if err != nil {
+		slog.Error("error creating req object", slog.Any("err", err))
 		return nil, err
 	}
 
@@ -243,17 +267,19 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
+		slog.Error("error executing request", slog.Any("err", err))
 		return nil, err
 	}
 
 	defer resp.Body.Close()
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
+		slog.Error("error reading resp body", slog.Any("err", err))
 		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Println(resp.StatusCode)
+		slog.Error(fmt.Sprintf("expected status code 200, actual status code: %v", resp.StatusCode))
 		return nil, errors.New("not expected status code")
 	}
 
