@@ -1,4 +1,19 @@
 services:
+  ollama:
+    image: ollama/ollama
+    container_name: ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
   file-storage-master:
     image: chrislusf/seaweedfs:latest
     ports:
@@ -65,18 +80,6 @@ services:
     networks:
       - app-network
     restart: always
-  migrator:
-    image: migrate/migrate:latest
-    volumes:
-      - ./migrations:/migrations
-    command:
-      [
-        "-path",
-        "/migrations",
-        "-database",
-        "host=localhost port=5432 user=root password=1234 dbname=medibrain sslmode=disable",
-        "up",
-      ]
 volumes:
   master_data:
   volume_data:

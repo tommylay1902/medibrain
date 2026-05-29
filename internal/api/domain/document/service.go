@@ -39,16 +39,19 @@ func NewService(
 func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []byte, header *multipart.FileHeader, apiKey string, updateDM *metadata.Metadata) (*metadata.Metadata, error) {
 	dmBytes, err := dps.stirlingClient.UpdateMetaData(pdfBytes, apiKey, updateDM)
 	if err != nil {
+		fmt.Println("error updating document metadata", err)
 		return nil, err
 	}
 
 	dm, err := dps.stirlingClient.GetMetaData(dmBytes, header, apiKey)
 	if err != nil {
+		fmt.Println("error getting new metadata")
 		return nil, err
 	}
 
 	assignRes, err := dps.seaweedClient.Assign()
 	if err != nil {
+		fmt.Println("error getting seaweed space to store file")
 		return nil, err
 	}
 

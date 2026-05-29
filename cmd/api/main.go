@@ -1,6 +1,9 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/tommylay1902/medibrain/internal/api"
 	"github.com/tommylay1902/medibrain/internal/api/domain/document"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
@@ -12,6 +15,10 @@ import (
 )
 
 func main() {
+	// setup logger
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
+	slog.SetDefault(logger)
+
 	rag := rag.NewRag()
 	db := database.NewDB()
 	uowFactory := database.NewUnitOfWorkFactory(db)

@@ -74,10 +74,11 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 	dm, err := dph.service.UploadDocumentPipelineWithEdit(pdfBytes, header, apiKey, &updateDM)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("internal server err: %v", err), http.StatusInternalServerError)
+		return
 	}
 
-	w.WriteHeader(201)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
 
 	err = json.NewEncoder(w).Encode(dm)
 	if err != nil {

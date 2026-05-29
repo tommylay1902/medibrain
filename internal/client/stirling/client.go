@@ -19,7 +19,7 @@ type StirlingClient struct {
 
 func NewClient() *StirlingClient {
 	return &StirlingClient{
-		BaseURL: "http://localhost:3000",
+		BaseURL: "http://localhost:3000/api/v1",
 		Client:  &http.Client{},
 	}
 }
@@ -49,7 +49,7 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 	}
 
 	req, err := http.NewRequest("POST",
-		fmt.Sprintf("%s/api/v1/convert/pdf/text", sc.BaseURL),
+		fmt.Sprintf("%s/convert/pdf/text", sc.BaseURL),
 		body)
 	if err != nil {
 		return nil, err
@@ -69,6 +69,7 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 	}
 
 	if resp.StatusCode != 200 {
+		fmt.Println("error not getting expected status code in get text from pdf")
 		return nil, errors.New("not expected status code")
 	}
 	result := string(respBody)
@@ -101,7 +102,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	writer.Boundary()
 
 	req, err := http.NewRequest("POST",
-		fmt.Sprintf("%s/api/v1/analysis/document-properties", sc.BaseURL),
+		fmt.Sprintf("%s/analysis/document-properties", sc.BaseURL),
 		body)
 	if err != nil {
 		return nil, err
@@ -121,6 +122,7 @@ func (sc *StirlingClient) GetMetaData(pdfBytes []byte, header *multipart.FileHea
 	}
 
 	if resp.StatusCode != 200 {
+		fmt.Println("error not expected status code in GetMetaData")
 		return nil, errors.New("not expected status code")
 	}
 
@@ -138,7 +140,7 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 
 	pdfReader := bytes.NewReader(pdfBytes)
 	tee := io.TeeReader(pdfReader, &preservedBuf)
-	stirlingURL := fmt.Sprintf("%s/api/v1/convert/pdf/img", sc.BaseURL)
+	stirlingURL := fmt.Sprintf("%s/convert/pdf/img", sc.BaseURL)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
@@ -184,7 +186,6 @@ func (sc *StirlingClient) GenerateThumbnail(pdfBytes []byte, apiKey string) ([]b
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Println(string(respBody))
 		return nil, errors.New("generating thumbnail, status not expected status code")
 	}
 
@@ -252,6 +253,7 @@ func (sc *StirlingClient) UpdateMetaData(pdfBytes []byte, apiKey string, dm *met
 	}
 
 	if resp.StatusCode != 200 {
+		fmt.Println(resp.StatusCode)
 		return nil, errors.New("not expected status code")
 	}
 

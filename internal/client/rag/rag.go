@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 
@@ -25,7 +26,7 @@ func newEmbedder() *embedder {
 	// TODO: need to fix the pathing for loading env
 	err := godotenv.Load()
 	if err != nil {
-		fmt.Println("error loading .env")
+		slog.Error("error loading .env")
 		wd, _ := os.Getwd()
 		fmt.Printf("Current working directory: %s\n", wd)
 		panic(err)
@@ -36,7 +37,8 @@ func newEmbedder() *embedder {
 		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
 	)
 	if err != nil {
-		fmt.Println("error getting llm client")
+		// fmt.Println("error getting llm client")
+		slog.Error("error getting llm client")
 		panic(err)
 	}
 
@@ -53,6 +55,7 @@ func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]f
 		"",
 	)
 	if err != nil {
+		slog.Error("error generating embedding", err)
 		return nil, err
 	}
 
@@ -70,11 +73,12 @@ func NewRag() *Rag {
 		Port: 6334,
 	})
 	if err != nil {
-		fmt.Println("error connecting to qdrant client")
+		// fmt.Println("error connecting to qdrant client")
+		slog.Error("error connecting to qdrant client", err)
 		panic(err)
 	}
 
-	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(800), textsplitter.WithChunkOverlap(40))
+	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(300), textsplitter.WithChunkOverlap(40))
 
 	return &Rag{
 		qClient:  client,
@@ -121,6 +125,7 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 		Points:         points,
 	})
 	if err != nil {
+		slog.Error("error upserting chunk into qdrant", err)
 		return err
 	}
 
@@ -178,6 +183,7 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 		WithPayload:    qdrant.NewWithPayload(true),
 	})
 	if err != nil {
+		slog.Error("error getting chunk by query", err)
 		panic(err)
 	}
 
@@ -216,39 +222,41 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 func GenerateCollections(r *Rag) {
 	exists, err := r.qClient.CollectionExists(context.Background(), "documents")
 	if err != nil {
-		fmt.Println("error checking for document collection")
+		// fmt.Println("error checking for document collection")
+		slog.Error("error checking for document collection")
 		panic(err)
 	}
 	if exists {
 		err := r.qClient.DeleteCollection(context.Background(), "documents")
 		if err != nil {
-			fmt.Println("error deleting document collection")
+			// fmt.Println("error deleting document collection")
+			slog.Error("error deleting document collection")
 			panic(err)
 		}
 	}
 
 	exists, err = r.qClient.CollectionExists(context.Background(), "audio_logs")
 	if err != nil {
-		fmt.Println("error checking for audio logs collection")
+		slog.Error("error checking for audio logs collection", err)
 		panic(err)
 	}
 	if exists {
 		err := r.qClient.DeleteCollection(context.Background(), "audio_logs")
 		if err != nil {
-			fmt.Println("error deleting audio logs collection")
+			slog.Error("error deleting audio logs collection")
 			panic(err)
 		}
 	}
 
 	exists, err = r.qClient.CollectionExists(context.Background(), "notes")
 	if err != nil {
-		fmt.Println("error checking for notes collection")
+		slog.Error("error checking for notes collection")
 		panic(err)
 	}
 	if exists {
 		err := r.qClient.DeleteCollection(context.Background(), "notes")
 		if err != nil {
-			fmt.Println("error deleting notes collection")
+			slog.Error("error deleting notes collection")
 			panic(err)
 		}
 	}
@@ -322,6 +330,7 @@ func getEmbedding(text string) ([]float32, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		fmt.Println("error hit in calling ollama")
+		fmt.Println(string(body))
 		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
