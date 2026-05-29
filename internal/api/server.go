@@ -4,6 +4,7 @@ package api
 import (
 	"context"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -29,7 +30,7 @@ func NewServer(port string, mux *Mux) *Server {
 func (s *Server) StartServer() {
 	serverErrors := make(chan error, 1)
 	go func() {
-		log.Println("http server listening on port 8080")
+		slog.Info("http server listening on port 8080")
 		if err := s.Server.ListenAndServe(); err != nil {
 			serverErrors <- err
 		}
@@ -42,6 +43,7 @@ func (s *Server) StartServer() {
 	case err := <-serverErrors:
 		log.Fatalf("Fatal server error: %v", err)
 	case <-stop:
+		slog.Info("Shutdown signal received, shutting down server gracefully...")
 		log.Println("Shutdown signal received, shutting down server gracefully...")
 
 		// Create a context with a timeout for the shutdown
@@ -52,6 +54,6 @@ func (s *Server) StartServer() {
 		if err := s.Server.Shutdown(ctx); err != nil {
 			log.Fatalf("Server shutdown failed: %v", err)
 		}
-		log.Println("Server gracefully stopped")
+		slog.Info("message", "Server gracefully stopped")
 	}
 }
