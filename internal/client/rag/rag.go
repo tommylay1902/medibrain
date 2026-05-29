@@ -8,10 +8,8 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/qdrant/go-client/qdrant"
 	"github.com/tmc/langchaingo/llms/huggingface"
 	"github.com/tmc/langchaingo/schema"
@@ -20,31 +18,6 @@ import (
 
 type embedder struct {
 	llm *huggingface.LLM
-}
-
-func newEmbedder() *embedder {
-	// TODO: need to fix the pathing for loading env
-	err := godotenv.Load()
-	if err != nil {
-		slog.Error("error loading .env")
-		wd, _ := os.Getwd()
-		fmt.Printf("Current working directory: %s\n", wd)
-		panic(err)
-	}
-	llm, err := huggingface.New(
-		huggingface.WithModel("sentence-transformers/all-MiniLM-L6-v2"),
-		huggingface.WithToken(os.Getenv("HF_TOKEN")),
-		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
-	)
-	if err != nil {
-		// fmt.Println("error getting llm client")
-		slog.Error("error getting llm client")
-		panic(err)
-	}
-
-	return &embedder{
-		llm: llm,
-	}
 }
 
 func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
@@ -73,7 +46,6 @@ func NewRag() *Rag {
 		Port: 6334,
 	})
 	if err != nil {
-		// fmt.Println("error connecting to qdrant client")
 		slog.Error("error connecting to qdrant client", err)
 		panic(err)
 	}
@@ -222,41 +194,39 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 func GenerateCollections(r *Rag) {
 	exists, err := r.qClient.CollectionExists(context.Background(), "documents")
 	if err != nil {
-		// fmt.Println("error checking for document collection")
-		slog.Error("error checking for document collection")
+		slog.Error("error checking for document collection", slog.Any("err", err))
 		panic(err)
 	}
 	if exists {
 		err := r.qClient.DeleteCollection(context.Background(), "documents")
 		if err != nil {
-			// fmt.Println("error deleting document collection")
-			slog.Error("error deleting document collection")
+			slog.Error("error deleting document collection", slog.Any("err", err))
 			panic(err)
 		}
 	}
 
 	exists, err = r.qClient.CollectionExists(context.Background(), "audio_logs")
 	if err != nil {
-		slog.Error("error checking for audio logs collection", err)
+		slog.Error("error checking for audio logs collection", slog.Any("err", err))
 		panic(err)
 	}
 	if exists {
 		err := r.qClient.DeleteCollection(context.Background(), "audio_logs")
 		if err != nil {
-			slog.Error("error deleting audio logs collection")
+			slog.Error("error deleting audio logs collection", slog.Any("err", err))
 			panic(err)
 		}
 	}
 
 	exists, err = r.qClient.CollectionExists(context.Background(), "notes")
 	if err != nil {
-		slog.Error("error checking for notes collection")
+		slog.Error("error checking for notes collection", slog.Any("err", err))
 		panic(err)
 	}
 	if exists {
 		err := r.qClient.DeleteCollection(context.Background(), "notes")
 		if err != nil {
-			slog.Error("error deleting notes collection")
+			slog.Error("error deleting notes collection", slog.Any("err", err))
 			panic(err)
 		}
 	}
@@ -268,7 +238,7 @@ func GenerateCollections(r *Rag) {
 		}),
 	})
 	if err != nil {
-		fmt.Println("error creating documents collection")
+		slog.Error("error creating documents collection", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -281,6 +251,7 @@ func GenerateCollections(r *Rag) {
 	})
 	if err != nil {
 		fmt.Println("error creating audio logs collection")
+		slog.Error("error creating audio logs collection", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -292,7 +263,7 @@ func GenerateCollections(r *Rag) {
 		}),
 	})
 	if err != nil {
-		fmt.Println("error creating notes collection")
+		slog.Error("error creating notes collection", slog.Any("err", err))
 		panic(err)
 	}
 }
@@ -310,6 +281,7 @@ func getEmbedding(text string) ([]float32, error) {
 	reqBody := EmbeddingRequest{Model: "all-minilm:l6-v2", Prompt: text}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
+		slog.Error("failed to marshal request", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
@@ -319,24 +291,51 @@ func getEmbedding(text string) ([]float32, error) {
 		bytes.NewBuffer(jsonBody),
 	)
 	if err != nil {
+		slog.Error("failed to call Ollama API", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to call Ollama API: %w", err)
 	}
+
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("error hit in calling")
+		slog.Error("failed to read response", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Println("error hit in calling ollama")
-		fmt.Println(string(body))
+		slog.Error("error hit in calling ollama", slog.Any("err", string(body)))
 		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	var embeddingResp EmbeddingResponse
 	if err := json.Unmarshal(body, &embeddingResp); err != nil {
+		slog.Error("failed to parse response", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 	return embeddingResp.Embedding, nil
 }
+
+// func newEmbedder() *embedder {
+// 	// TODO: need to fix the pathing for loading env
+// 	err := godotenv.Load()
+// 	if err != nil {
+// 		slog.Error("error loading .env")
+// 		wd, _ := os.Getwd()
+// 		fmt.Printf("Current working directory: %s\n", wd)
+// 		panic(err)
+// 	}
+// 	llm, err := huggingface.New(
+// 		huggingface.WithModel("sentence-transformers/all-MiniLM-L6-v2"),
+// 		huggingface.WithToken(os.Getenv("HF_TOKEN")),
+// 		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
+// 	)
+// 	if err != nil {
+// 		// fmt.Println("error getting llm client")
+// 		slog.Error("error getting llm client")
+// 		panic(err)
+// 	}
+//
+// 	return &embedder{
+// 		llm: llm,
+// 	}
+// }
