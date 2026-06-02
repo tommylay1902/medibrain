@@ -85,34 +85,33 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 	return nil
 }
 
-func (r *Rag) StoreNote(content string, title string) error {
-	// document := schema.Document{
-	// 	PageContent: doc,
-	// }
-	// chunks, _ := r.splitter.SplitText(document.PageContent)
-	// points := make([]*qdrant.PointStruct, 0, len(chunks))
-	// for _, chunk := range chunks {
-	// 	vec, err := getEmbedding(chunk)
-	// 	if err != nil {
-	// 		continue
-	// 	}
-	// 	payload := qdrant.NewValueMap(map[string]any{
-	// 		"id":        ,
-	// 		"content":      chunk,
-	// 		"uploadDate":   docUploadDate,
-	// 		"creationDate": docCreationDate,
-	// 		"keywords":     keywords,
-	// 	})
-	// 	points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
-	// }
-	// _, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
-	// 	CollectionName: "documents",
-	// 	Points:         points,
-	// })
-	// if err != nil {
-	// 	return err
-	// }
-	// // return nil
+func (r *Rag) StoreNote(id *uuid.UUID, content string, title string) error {
+	document := schema.Document{
+		PageContent: content,
+	}
+	chunks, _ := r.splitter.SplitText(document.PageContent)
+	points := make([]*qdrant.PointStruct, 0, len(chunks))
+	for _, chunk := range chunks {
+		vec, err := getEmbedding(chunk)
+		if err != nil {
+			slog.Error("error embedding chunk")
+			continue
+		}
+		payload := qdrant.NewValueMap(map[string]any{
+			"id":      id,
+			"content": chunk,
+			"title":   title,
+		})
+
+		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
+	}
+	_, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+		CollectionName: "notes",
+		Points:         points,
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

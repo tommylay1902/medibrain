@@ -8,24 +8,26 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/tommylay1902/medibrain/internal/client/rag"
 	"github.com/tommylay1902/medibrain/internal/database"
 )
 
 type NoteService struct {
-	repo *NoteRepo
-	uow  database.UnitOfWorkFactory
+	repo      *NoteRepo
+	uow       database.UnitOfWorkFactory
+	ragClient *rag.Rag
 }
 
-func NewNoteService(repo *NoteRepo, uow database.UnitOfWorkFactory) *NoteService {
+func NewNoteService(repo *NoteRepo, uow database.UnitOfWorkFactory, ragClient *rag.Rag) *NoteService {
 	return &NoteService{
-		repo: repo,
-		uow:  uow,
+		repo:      repo,
+		uow:       uow,
+		ragClient: ragClient,
 	}
 }
 
 func (ns *NoteService) List(ctx context.Context) (NoteList, error) {
 	notes, err := ns.repo.List(ctx)
-
 	return notes, err
 }
 
@@ -92,4 +94,10 @@ func (ns *NoteService) CreateTag(ctx context.Context, tag Tag) (*Tag, error) {
 
 func (ns *NoteService) ListTag(ctx context.Context) (TagList, error) {
 	return ns.repo.ListTags(ctx)
+}
+
+func (ns *NoteService) StoreNote(note Note) error {
+	err := ns.ragClient.StoreNote(note.ID, note.Content, note.Title)
+
+	return err
 }

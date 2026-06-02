@@ -25,7 +25,7 @@ func main() {
 	nr := note.NewNoteRepo(uowFactory)
 
 	dms := metadata.NewService(dmr)
-	ns := note.NewNoteService(nr, uowFactory)
+	ns := note.NewNoteService(nr, uowFactory, rag)
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()
 

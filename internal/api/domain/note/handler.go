@@ -74,7 +74,7 @@ func (nh *NoteHandler) ListTags(w http.ResponseWriter, req *http.Request) {
 }
 
 type CreateNoteBody struct {
-	Note
+	Note `json:"note"`
 	Tags []string `json:"tags"`
 }
 
@@ -88,6 +88,8 @@ func (nh *NoteHandler) CreateNote(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("Bad request error"), http.StatusBadRequest)
 		return
 	}
+
+	fmt.Println("body request:", body.Note)
 	err = nh.noteService.CreateNoteWithTags(ctx, &body.Note, body.Tags)
 	if err != nil {
 		slog.Error("error creating note with tags", slog.Any("err", err))
@@ -129,4 +131,15 @@ func (nh *NoteHandler) CreateTag(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (nh *NoteHandler) ChunkAndUploadNote(w http.ResponseWriter, req *http.Request) {
+	var note Note
+
+	err := json.NewDecoder(req.Body).Decode(&note)
+	if err != nil {
+		slog.Error("Error parsing request body")
+		http.Error(w, "Couldn't parse request body", http.StatusBadRequest)
+	}
+	nh.noteService.StoreNote(note)
 }

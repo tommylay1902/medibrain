@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -113,6 +114,8 @@ func (nr *NoteRepo) ListWithKeywords(ctx context.Context) ([]*NoteWithTags, erro
 }
 
 func (nr *NoteRepo) CreateNote(ctx context.Context, note *Note) (*uuid.UUID, error) {
+	fmt.Println("hello", note.Content)
+	slog.Info("entering create note repo")
 	db := nr.uow.GetDB(ctx)
 	ext, ok := db.(sqlx.ExtContext)
 	if !ok {
