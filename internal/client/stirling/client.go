@@ -1,3 +1,4 @@
+// Package stirling interacts with the stirling api
 package stirling
 
 import (

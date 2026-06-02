@@ -1,3 +1,4 @@
+// Package seaweedclient interacts with the seaweed store
 package seaweedclient
 
 import (

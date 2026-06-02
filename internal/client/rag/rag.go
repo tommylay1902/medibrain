@@ -1,3 +1,4 @@
+// Package rag interacts with all the clients that are involved with the RAG process
 package rag
 
 import (
@@ -11,29 +12,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/qdrant/go-client/qdrant"
-	"github.com/tmc/langchaingo/llms/huggingface"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/textsplitter"
 )
-
-type embedder struct {
-	llm *huggingface.LLM
-}
-
-func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
-	vectors, err := e.llm.CreateEmbedding(
-		ctx,
-		texts,
-		"sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
-		"",
-	)
-	if err != nil {
-		slog.Error("error generating embedding", err)
-		return nil, err
-	}
-
-	return vectors, nil
-}
 
 type Rag struct {
 	qClient  *qdrant.Client
@@ -46,7 +27,7 @@ func NewRag() *Rag {
 		Port: 6334,
 	})
 	if err != nil {
-		slog.Error("error connecting to qdrant client", err)
+		slog.Error("error connecting to qdrant client", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -97,7 +78,7 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 		Points:         points,
 	})
 	if err != nil {
-		slog.Error("error upserting chunk into qdrant", err)
+		slog.Error("error upserting chunk into qdrant", slog.Any("err", err))
 		return err
 	}
 
@@ -116,8 +97,7 @@ func (r *Rag) StoreNote(content string, title string) error {
 	// 		continue
 	// 	}
 	// 	payload := qdrant.NewValueMap(map[string]any{
-	// 		"fid":          fid,
-	// 		"title":        docTitle,
+	// 		"id":        ,
 	// 		"content":      chunk,
 	// 		"uploadDate":   docUploadDate,
 	// 		"creationDate": docCreationDate,
@@ -132,8 +112,7 @@ func (r *Rag) StoreNote(content string, title string) error {
 	// if err != nil {
 	// 	return err
 	// }
-	//
-	// return nil
+	// // return nil
 	return nil
 }
 
@@ -155,7 +134,7 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 		WithPayload:    qdrant.NewWithPayload(true),
 	})
 	if err != nil {
-		slog.Error("error getting chunk by query", err)
+		slog.Error("error getting chunk by query", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -198,7 +177,7 @@ func GenerateCollections(r *Rag) {
 		panic(err)
 	}
 	if exists {
-		err := r.qClient.DeleteCollection(context.Background(), "documents")
+		err = r.qClient.DeleteCollection(context.Background(), "documents")
 		if err != nil {
 			slog.Error("error deleting document collection", slog.Any("err", err))
 			panic(err)
@@ -211,7 +190,7 @@ func GenerateCollections(r *Rag) {
 		panic(err)
 	}
 	if exists {
-		err := r.qClient.DeleteCollection(context.Background(), "audio_logs")
+		err = r.qClient.DeleteCollection(context.Background(), "audio_logs")
 		if err != nil {
 			slog.Error("error deleting audio logs collection", slog.Any("err", err))
 			panic(err)
@@ -224,7 +203,7 @@ func GenerateCollections(r *Rag) {
 		panic(err)
 	}
 	if exists {
-		err := r.qClient.DeleteCollection(context.Background(), "notes")
+		err = r.qClient.DeleteCollection(context.Background(), "notes")
 		if err != nil {
 			slog.Error("error deleting notes collection", slog.Any("err", err))
 			panic(err)
@@ -304,7 +283,7 @@ func getEmbedding(text string) ([]float32, error) {
 
 	if resp.StatusCode != http.StatusOK {
 		slog.Error("error hit in calling ollama", slog.Any("err", string(body)))
-		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
 	var embeddingResp EmbeddingResponse
@@ -339,3 +318,22 @@ func getEmbedding(text string) ([]float32, error) {
 // 		llm: llm,
 // 	}
 // }
+
+// type embedder struct {
+// 	llm *huggingface.LLM
+// }
+//
+// func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
+// 	vectors, err := e.llm.CreateEmbedding(
+// 		ctx,
+// 		texts,
+// 		"sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
+// 		"",
+// 	)
+// 	if err != nil {
+// 		slog.Error("error generating embedding", slog.Any("err", err))
+// 		return nil, err
+// 	}
+//
+// 	return vectors, nil
+//
