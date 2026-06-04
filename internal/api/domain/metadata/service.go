@@ -1,14 +1,14 @@
 package metadata
 
-type DocumentMetaService struct {
-	repo *DocumentMetaRepo
+type MetadataService struct {
+	repo *MetadataRepo
 }
 
-func NewService(repo *DocumentMetaRepo) *DocumentMetaService {
-	return &DocumentMetaService{repo: repo}
+func NewService(repo *MetadataRepo) *MetadataService {
+	return &MetadataService{repo: repo}
 }
 
-func (s *DocumentMetaService) List() (DocumentMetaList, error) {
+func (s *MetadataService) List() (MetadataList, error) {
 	result, err := s.repo.List()
 	if err != nil {
 		return nil, err
@@ -16,7 +16,7 @@ func (s *DocumentMetaService) List() (DocumentMetaList, error) {
 	return result, nil
 }
 
-func (s *DocumentMetaService) Create(dm *DocumentMeta) error {
+func (s *MetadataService) Create(dm *Metadata) error {
 	err := s.repo.Create(dm)
 	if err != nil {
 		return err

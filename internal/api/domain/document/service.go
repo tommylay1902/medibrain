@@ -11,20 +11,19 @@ import (
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
 )
 
-// TODO: passing in shouldnt be pointer maybe? need to do research
 type DocumentPipelineService struct {
-	dmRepo         *metadata.DocumentMetaRepo
+	dmRepo         *metadata.MetadataRepo
 	stirlingClient *stirling.StirlingClient
 	seaweedClient  *seaweedclient.SeaWeedClient
-	dms            *metadata.DocumentMetaService
+	dms            *metadata.MetadataService
 	ragClient      *rag.Rag
 }
 
 func NewService(
-	dmRepo *metadata.DocumentMetaRepo,
+	dmRepo *metadata.MetadataRepo,
 	seaweedClient *seaweedclient.SeaWeedClient,
 	stirlingClient *stirling.StirlingClient,
-	dms *metadata.DocumentMetaService,
+	dms *metadata.MetadataService,
 	ragClient *rag.Rag,
 ) *DocumentPipelineService {
 	return &DocumentPipelineService{
@@ -36,7 +35,7 @@ func NewService(
 	}
 }
 
-func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []byte, header *multipart.FileHeader, apiKey string, updateDM *metadata.DocumentMeta) (*metadata.DocumentMeta, error) {
+func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []byte, header *multipart.FileHeader, apiKey string, updateDM *metadata.Metadata) (*metadata.Metadata, error) {
 	dmBytes, err := dps.stirlingClient.UpdateMetaData(pdfBytes, apiKey, updateDM)
 	if err != nil {
 		return nil, err
@@ -62,7 +61,6 @@ func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []by
 	if err != nil {
 		cleanupErrors := dps.cleanupResources(assignRes.PublicURL, dm.PdfFid)
 		if len(cleanupErrors) > 0 {
-
 			allErrors := append([]error{err}, cleanupErrors...)
 			return nil, errors.Join(allErrors...)
 		}
@@ -103,7 +101,7 @@ func (dps *DocumentPipelineService) UploadDocumentPipelineWithEdit(pdfBytes []by
 	return dm, nil
 }
 
-func (dps *DocumentPipelineService) UploadDocumentPipeline(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.DocumentMeta, error) {
+func (dps *DocumentPipelineService) UploadDocumentPipeline(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.Metadata, error) {
 	dm, err := dps.stirlingClient.GetMetaData(pdfBytes, header, apiKey)
 	if err != nil {
 		return nil, err
@@ -164,7 +162,7 @@ func (dps *DocumentPipelineService) UploadDocumentPipeline(pdfBytes []byte, head
 	return dm, nil
 }
 
-func (dps *DocumentPipelineService) UploadChunks(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.DocumentMeta, error) {
+func (dps *DocumentPipelineService) UploadChunks(pdfBytes []byte, header *multipart.FileHeader, apiKey string) (*metadata.Metadata, error) {
 	fmt.Println(string(pdfBytes))
 	return nil, nil
 }

@@ -1,3 +1,4 @@
+// Package rag interacts with all the clients that are involved with the RAG process
 package rag
 
 import (
@@ -6,58 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 	"github.com/qdrant/go-client/qdrant"
-	"github.com/tmc/langchaingo/llms/huggingface"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/textsplitter"
 )
-
-type embedder struct {
-	llm *huggingface.LLM
-}
-
-func newEmbedder() *embedder {
-	// TODO: need to fix the pathing for loading env
-	err := godotenv.Load()
-	if err != nil {
-		fmt.Println("error loading .env")
-		wd, _ := os.Getwd()
-		fmt.Printf("Current working directory: %s\n", wd)
-		panic(err)
-	}
-	llm, err := huggingface.New(
-		huggingface.WithModel("sentence-transformers/all-MiniLM-L6-v2"),
-		huggingface.WithToken(os.Getenv("HF_TOKEN")),
-		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
-	)
-	if err != nil {
-		fmt.Println("error getting llm client")
-		panic(err)
-	}
-
-	return &embedder{
-		llm: llm,
-	}
-}
-
-func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
-	vectors, err := e.llm.CreateEmbedding(
-		ctx,
-		texts,
-		"sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
-		"",
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	return vectors, nil
-}
 
 type Rag struct {
 	qClient  *qdrant.Client
@@ -70,11 +27,11 @@ func NewRag() *Rag {
 		Port: 6334,
 	})
 	if err != nil {
-		fmt.Println("error connecting to qdrant client")
+		slog.Error("error connecting to qdrant client", slog.Any("err", err))
 		panic(err)
 	}
 
-	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(800), textsplitter.WithChunkOverlap(40))
+	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(300), textsplitter.WithChunkOverlap(40))
 
 	return &Rag{
 		qClient:  client,
@@ -121,9 +78,40 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 		Points:         points,
 	})
 	if err != nil {
+		slog.Error("error upserting chunk into qdrant", slog.Any("err", err))
 		return err
 	}
 
+	return nil
+}
+
+func (r *Rag) StoreNote(id *uuid.UUID, content string, title string) error {
+	document := schema.Document{
+		PageContent: content,
+	}
+	chunks, _ := r.splitter.SplitText(document.PageContent)
+	points := make([]*qdrant.PointStruct, 0, len(chunks))
+	for _, chunk := range chunks {
+		vec, err := getEmbedding(chunk)
+		if err != nil {
+			slog.Error("error embedding chunk")
+			continue
+		}
+		payload := qdrant.NewValueMap(map[string]any{
+			"id":      id.String(),
+			"content": chunk,
+			"title":   title,
+		})
+
+		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
+	}
+	_, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+		CollectionName: "notes",
+		Points:         points,
+	})
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -145,6 +133,7 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 		WithPayload:    qdrant.NewWithPayload(true),
 	})
 	if err != nil {
+		slog.Error("error getting chunk by query", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -183,39 +172,39 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 func GenerateCollections(r *Rag) {
 	exists, err := r.qClient.CollectionExists(context.Background(), "documents")
 	if err != nil {
-		fmt.Println("error checking for document collection")
+		slog.Error("error checking for document collection", slog.Any("err", err))
 		panic(err)
 	}
 	if exists {
-		err := r.qClient.DeleteCollection(context.Background(), "documents")
+		err = r.qClient.DeleteCollection(context.Background(), "documents")
 		if err != nil {
-			fmt.Println("error deleting document collection")
+			slog.Error("error deleting document collection", slog.Any("err", err))
 			panic(err)
 		}
 	}
 
 	exists, err = r.qClient.CollectionExists(context.Background(), "audio_logs")
 	if err != nil {
-		fmt.Println("error checking for audio logs collection")
+		slog.Error("error checking for audio logs collection", slog.Any("err", err))
 		panic(err)
 	}
 	if exists {
-		err := r.qClient.DeleteCollection(context.Background(), "audio_logs")
+		err = r.qClient.DeleteCollection(context.Background(), "audio_logs")
 		if err != nil {
-			fmt.Println("error deleting audio logs collection")
+			slog.Error("error deleting audio logs collection", slog.Any("err", err))
 			panic(err)
 		}
 	}
 
 	exists, err = r.qClient.CollectionExists(context.Background(), "notes")
 	if err != nil {
-		fmt.Println("error checking for notes collection")
+		slog.Error("error checking for notes collection", slog.Any("err", err))
 		panic(err)
 	}
 	if exists {
-		err := r.qClient.DeleteCollection(context.Background(), "notes")
+		err = r.qClient.DeleteCollection(context.Background(), "notes")
 		if err != nil {
-			fmt.Println("error deleting notes collection")
+			slog.Error("error deleting notes collection", slog.Any("err", err))
 			panic(err)
 		}
 	}
@@ -227,7 +216,7 @@ func GenerateCollections(r *Rag) {
 		}),
 	})
 	if err != nil {
-		fmt.Println("error creating documents collection")
+		slog.Error("error creating documents collection", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -240,6 +229,7 @@ func GenerateCollections(r *Rag) {
 	})
 	if err != nil {
 		fmt.Println("error creating audio logs collection")
+		slog.Error("error creating audio logs collection", slog.Any("err", err))
 		panic(err)
 	}
 
@@ -251,7 +241,7 @@ func GenerateCollections(r *Rag) {
 		}),
 	})
 	if err != nil {
-		fmt.Println("error creating notes collection")
+		slog.Error("error creating notes collection", slog.Any("err", err))
 		panic(err)
 	}
 }
@@ -269,6 +259,7 @@ func getEmbedding(text string) ([]float32, error) {
 	reqBody := EmbeddingRequest{Model: "all-minilm:l6-v2", Prompt: text}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
+		slog.Error("failed to marshal request", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
 
@@ -278,23 +269,70 @@ func getEmbedding(text string) ([]float32, error) {
 		bytes.NewBuffer(jsonBody),
 	)
 	if err != nil {
+		slog.Error("failed to call Ollama API", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to call Ollama API: %w", err)
 	}
+
 	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
+		slog.Error("failed to read response", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("Ollama API error (%d): %s", resp.StatusCode, string(body))
+		slog.Error("error hit in calling ollama", slog.Any("err", string(body)))
+		return nil, fmt.Errorf("ollama API error (%d): %s", resp.StatusCode, string(body))
 	}
 
-	// 4. Parse the embedding
 	var embeddingResp EmbeddingResponse
 	if err := json.Unmarshal(body, &embeddingResp); err != nil {
+		slog.Error("failed to parse response", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-
 	return embeddingResp.Embedding, nil
 }
+
+// func newEmbedder() *embedder {
+// 	// TODO: need to fix the pathing for loading env
+// 	err := godotenv.Load()
+// 	if err != nil {
+// 		slog.Error("error loading .env")
+// 		wd, _ := os.Getwd()
+// 		fmt.Printf("Current working directory: %s\n", wd)
+// 		panic(err)
+// 	}
+// 	llm, err := huggingface.New(
+// 		huggingface.WithModel("sentence-transformers/all-MiniLM-L6-v2"),
+// 		huggingface.WithToken(os.Getenv("HF_TOKEN")),
+// 		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
+// 	)
+// 	if err != nil {
+// 		// fmt.Println("error getting llm client")
+// 		slog.Error("error getting llm client")
+// 		panic(err)
+// 	}
+//
+// 	return &embedder{
+// 		llm: llm,
+// 	}
+// }
+
+// type embedder struct {
+// 	llm *huggingface.LLM
+// }
+//
+// func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
+// 	vectors, err := e.llm.CreateEmbedding(
+// 		ctx,
+// 		texts,
+// 		"sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
+// 		"",
+// 	)
+// 	if err != nil {
+// 		slog.Error("error generating embedding", slog.Any("err", err))
+// 		return nil, err
+// 	}
+//
+// 	return vectors, nil
+//

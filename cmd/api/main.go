@@ -1,9 +1,13 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+
 	"github.com/tommylay1902/medibrain/internal/api"
 	"github.com/tommylay1902/medibrain/internal/api/domain/document"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
+	"github.com/tommylay1902/medibrain/internal/api/domain/note"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
@@ -11,19 +15,23 @@ import (
 )
 
 func main() {
-	// embedder := retreival.NewEmbedder()
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{AddSource: true}))
+	slog.SetDefault(logger)
 
 	rag := rag.NewRag()
 	db := database.NewDB()
+	uowFactory := database.NewUnitOfWorkFactory(db)
 	dmr := metadata.NewRepo(db)
-	dms := metadata.NewService(dmr)
+	nr := note.NewNoteRepo(uowFactory)
 
+	dms := metadata.NewService(dmr)
+	ns := note.NewNoteService(nr, uowFactory, rag)
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()
 
 	dps := document.NewService(dmr, swc, sc, dms, rag)
 
-	mux := api.NewMux(dms, dps)
+	mux := api.NewMux(dms, dps, ns)
 
 	server := api.NewServer(":8080", mux)
 	server.StartServer()

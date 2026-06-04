@@ -1,20 +1,20 @@
 package document
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
-	"unicode/utf8"
 
-	"github.com/ledongthuc/pdf"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
+	"github.com/tommylay1902/medibrain/internal/client/rag"
 )
 
 type DocumentPipelineHandler struct {
-	service *DocumentPipelineService
+	service   *DocumentPipelineService
+	ragClient *rag.Rag
 }
 
 func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
@@ -27,6 +27,7 @@ func NewHandler(service *DocumentPipelineService) *DocumentPipelineHandler {
 func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.ResponseWriter, req *http.Request) {
 	err := req.ParseMultipartForm(2 << 20)
 	if err != nil {
+		slog.Error("error parsing multipart form", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("error parsing multipart form: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -39,6 +40,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 
 	file, header, err := req.FormFile("fileInput")
 	if err != nil {
+		slog.Error("error getting fileInput", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -46,24 +48,27 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 	defer file.Close()
 	maxSize := int64(2 << 20)
 	if header.Size > maxSize {
+		slog.Error("file size too large")
 		http.Error(w, fmt.Sprintf("file is too large: ~%.2f MB (max allowed: %.2f MB)", float64(header.Size)/(1024*1024), float64(maxSize)/(1024*1024)), http.StatusBadRequest)
 		return
 	}
 
 	pdfBytes, err := io.ReadAll(file)
 	if err != nil {
+		slog.Error("error reading file", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
 
 	apiKey := req.Header.Get("X-API-KEY")
-	var updateDM metadata.DocumentMeta
+	var updateDM metadata.Metadata
 
 	metadataJSON := req.FormValue("metadata")
 
 	if metadataJSON != "" {
-		err := json.Unmarshal([]byte(metadataJSON), &updateDM)
+		err = json.Unmarshal([]byte(metadataJSON), &updateDM)
 		if err != nil {
+			slog.Error("invalid metadata JSON", slog.Any("err", err))
 			http.Error(w, fmt.Sprintf("invalid metadata JSON: %v", err), http.StatusBadRequest)
 			return
 		}
@@ -71,14 +76,17 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 
 	dm, err := dph.service.UploadDocumentPipelineWithEdit(pdfBytes, header, apiKey, &updateDM)
 	if err != nil {
+		slog.Error("error with upload document service", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server err: %v", err), http.StatusInternalServerError)
+		return
 	}
 
-	w.WriteHeader(201)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
 
 	err = json.NewEncoder(w).Encode(dm)
 	if err != nil {
+		slog.Error("error uploading document", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Error uploading document: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -87,6 +95,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipelineWithEdit(w http.Respon
 func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter, req *http.Request) {
 	err := req.ParseMultipartForm(10 << 20)
 	if err != nil {
+		slog.Error("error parsing multipart form", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("error parsing multipart form: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -99,6 +108,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 
 	file, header, err := req.FormFile("fileInput")
 	if err != nil {
+		slog.Error("error parsing fileInput", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -106,12 +116,14 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 	defer file.Close()
 	maxSize := int64(2 << 20)
 	if header.Size > maxSize {
+		slog.Error("file size is too large")
 		http.Error(w, fmt.Sprintf("file is too large: ~%.2f MB (max allowed: %.2f MB)", float64(header.Size)/(1024*1024), float64(maxSize)/(1024*1024)), http.StatusBadRequest)
 		return
 	}
 
 	pdfBytes, err := io.ReadAll(file)
 	if err != nil {
+		slog.Error("error reading file", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -119,6 +131,7 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 	apiKey := req.Header.Get("X-API-KEY")
 	response, err := dph.service.UploadDocumentPipeline(pdfBytes, header, apiKey)
 	if err != nil {
+		slog.Error("Error with upload document service", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Error uploading document: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -127,14 +140,17 @@ func (dph *DocumentPipelineHandler) UploadDocumentPipeline(w http.ResponseWriter
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(response)
 	if err != nil {
+		slog.Error("Error uploading document", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Error uploading documument: %v", err), http.StatusInternalServerError)
 		return
 	}
 }
 
+// TODO: need to revise this looks like service logic is leaking into handler logic
 func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, req *http.Request) {
 	err := req.ParseMultipartForm(2 << 20)
 	if err != nil {
+		slog.Error("error parsing multipart form", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("error parsing multipart form: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -147,6 +163,7 @@ func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, re
 
 	file, header, err := req.FormFile("fileInput")
 	if err != nil {
+		slog.Error("err parsing fileInput", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -154,12 +171,14 @@ func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, re
 	defer file.Close()
 	maxSize := int64(2 << 20)
 	if header.Size > maxSize {
+		slog.Error("file is too large")
 		http.Error(w, fmt.Sprintf("file is too large: ~%.2f MB (max allowed: %.2f MB)", float64(header.Size)/(1024*1024), float64(maxSize)/(1024*1024)), http.StatusBadRequest)
 		return
 	}
 
 	pdfBytes, err := io.ReadAll(file)
 	if err != nil {
+		slog.Error("error reading file", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -167,6 +186,7 @@ func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, re
 	apiKey := req.Header.Get("X-API-KEY")
 	textBody, err := dph.service.stirlingClient.GetTextFromPdf(pdfBytes, header, apiKey)
 	if err != nil || textBody == nil {
+		slog.Error("error parsing pdf to text", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -175,11 +195,13 @@ func (dph *DocumentPipelineHandler) ChunkAndUploadText(w http.ResponseWriter, re
 
 	fid := req.FormValue("fid")
 	if strings.TrimSpace(fid) == "" {
+		slog.Error("need fid")
 		http.Error(w, fmt.Sprintf("Need fid: %v", err), http.StatusBadRequest)
 		return
 	}
 
 	if err = dph.service.ragClient.StoreDocument(*textBody, fid, dm.Title, dm.CreationDate, dm.ModificationDate, dm.Keywords); err != nil {
+		slog.Error("error with storing document", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
@@ -192,6 +214,7 @@ type SearchBody struct {
 func (dph *DocumentPipelineHandler) GetSearchQuery(w http.ResponseWriter, req *http.Request) {
 	var searchBody SearchBody
 	if err := json.NewDecoder(req.Body).Decode(&searchBody); err != nil {
+		slog.Error("request body parsing err", slog.Any("err", err))
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -199,71 +222,72 @@ func (dph *DocumentPipelineHandler) GetSearchQuery(w http.ResponseWriter, req *h
 	results := dph.service.ragClient.GetChunksByQuery(searchBody.Search)
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(results); err != nil {
+		slog.Error("err getting chunk by query", slog.Any("err", err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 }
 
-func extractTextFromPDF(pdfData []byte) (string, error) {
-	text, err := extractTextWithGoPDF(pdfData)
-	if err == nil && len(strings.TrimSpace(text)) > 0 {
-		return text, nil
-	}
+// func extractTextWithGoPDF(pdfData []byte) (string, error) {
+// 	reader := bytes.NewReader(pdfData)
+// 	pdfReader, err := pdf.NewReader(reader, int64(reader.Len()))
+// 	if err != nil {
+// 		return "", err
+// 	}
+//
+// 	var textBuilder strings.Builder
+// 	numPages := pdfReader.NumPage()
+//
+// 	for i := range numPages {
+// 		page := pdfReader.Page(i + 1)
+//
+// 		content, err := page.GetPlainText(nil)
+// 		if err != nil {
+// 			continue
+// 		}
+//
+// 		textBuilder.WriteString(content)
+// 		textBuilder.WriteString("\n")
+// 	}
+//
+// 	return textBuilder.String(), nil
+// }
 
-	return text, nil
-}
+// func extractTextFromPDF(pdfData []byte) (string, error) {
+// 	text, err := extractTextWithGoPDF(pdfData)
+// 	if err == nil && len(strings.TrimSpace(text)) > 0 {
+// 		return text, nil
+// 	}
+//
+// 	return text, nil
+// }
 
-func extractTextWithGoPDF(pdfData []byte) (string, error) {
-	reader := bytes.NewReader(pdfData)
-	pdfReader, err := pdf.NewReader(reader, int64(reader.Len()))
-	if err != nil {
-		return "", err
-	}
+// func isLikelyBase64(s string) bool {
+// 	if len(s) < 4 {
+// 		return false
+// 	}
+//
+// 	validBase64Chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+// 	base64Count := 0
+// 	totalChars := 0
+//
+// 	for _, r := range s {
+// 		if r == '\n' || r == '\r' || r == ' ' {
+// 			continue
+// 		}
+// 		totalChars++
+// 		if strings.ContainsRune(validBase64Chars, r) {
+// 			base64Count++
+// 		}
+// 	}
+//
+// 	if totalChars == 0 {
+// 		return false
+// 	}
+//
+// 	return float64(base64Count)/float64(totalChars) > 0.95
+// }
 
-	var textBuilder strings.Builder
-	numPages := pdfReader.NumPage()
-
-	for i := range numPages {
-		page := pdfReader.Page(i + 1)
-
-		content, err := page.GetPlainText(nil)
-		if err != nil {
-			continue
-		}
-
-		textBuilder.WriteString(content)
-		textBuilder.WriteString("\n")
-	}
-
-	return textBuilder.String(), nil
-}
-
-func isLikelyBase64(s string) bool {
-	if len(s) < 4 {
-		return false
-	}
-
-	validBase64Chars := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
-	base64Count := 0
-	totalChars := 0
-
-	for _, r := range s {
-		if r == '\n' || r == '\r' || r == ' ' {
-			continue
-		}
-		totalChars++
-		if strings.ContainsRune(validBase64Chars, r) {
-			base64Count++
-		}
-	}
-
-	if totalChars == 0 {
-		return false
-	}
-
-	return float64(base64Count)/float64(totalChars) > 0.95
-}
-
-func isValidUTF8(data []byte) bool {
-	return utf8.Valid(data)
-}
+// func isValidUTF8(data []byte) bool {
+// 	return utf8.Valid(data)
+// }

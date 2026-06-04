@@ -1,4 +1,18 @@
 services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+        - 11434:11434
+    volumes:
+        - ollama_data:/root/.ollama
+        - ./ollama-entrypoint.sh:/ollama-entrypoint.sh
+    container_name: ollama
+    pull_policy: always
+    tty: true
+    restart: always
+    entrypoint: ["/usr/bin/bash", "/ollama-entrypoint.sh"]
+    networks:
+      - app-network
   file-storage-master:
     image: chrislusf/seaweedfs:latest
     ports:
@@ -34,12 +48,6 @@ services:
         condition: service_healthy
     volumes:
       - volume_data:/data
-  # pdf:
-  #   image: stirlingtools/stirling-pdf:1.6.0
-  #   container_name: stirling-pdf
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:8080"
   db:
     image: postgres:16
     container_name: medibrain-db
@@ -71,13 +79,13 @@ services:
     networks:
       - app-network
     restart: always
-
 volumes:
   master_data:
   volume_data:
   db_data:
   qdrant_data:
     driver: local
+  ollama_data:
 
 networks:
   app-network:
