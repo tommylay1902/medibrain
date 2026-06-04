@@ -98,7 +98,7 @@ func (r *Rag) StoreNote(id *uuid.UUID, content string, title string) error {
 			continue
 		}
 		payload := qdrant.NewValueMap(map[string]any{
-			"id":      id,
+			"id":      id.String(),
 			"content": chunk,
 			"title":   title,
 		})

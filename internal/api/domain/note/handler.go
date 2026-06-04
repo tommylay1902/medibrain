@@ -89,15 +89,25 @@ func (nh *NoteHandler) CreateNote(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	fmt.Println("body request:", body.Note)
-	err = nh.noteService.CreateNoteWithTags(ctx, &body.Note, body.Tags)
+	noteId, err := nh.noteService.CreateNoteWithTags(ctx, &body.Note, body.Tags)
 	if err != nil {
 		slog.Error("error creating note with tags", slog.Any("err", err))
 		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
 		return
 	}
+	response := map[string]interface{}{
+		"id":      noteId,
+		"message": "Note created successfully",
+		"status":  "success",
+	}
 
 	w.WriteHeader(http.StatusCreated)
+	err = json.NewEncoder(w).Encode(response)
+	if err != nil {
+		slog.Error("error creating note with tags", slog.Any("err", err))
+		http.Error(w, fmt.Sprintf("Internal server error: %v", err), http.StatusInternalServerError)
+		return
+	}
 }
 
 func (nh *NoteHandler) CreateTag(w http.ResponseWriter, req *http.Request) {
@@ -141,5 +151,10 @@ func (nh *NoteHandler) ChunkAndUploadNote(w http.ResponseWriter, req *http.Reque
 		slog.Error("Error parsing request body")
 		http.Error(w, "Couldn't parse request body", http.StatusBadRequest)
 	}
-	nh.noteService.StoreNote(note)
+	err = nh.noteService.StoreNote(note)
+	if err != nil {
+		slog.Error("error indexing note", slog.Any("err", err))
+		http.Error(w, "error indexing note", http.StatusInternalServerError)
+		return
+	}
 }

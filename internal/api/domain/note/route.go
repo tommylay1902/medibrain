@@ -13,7 +13,7 @@ func NewNoteRoutes(ns *NoteService) *Route {
 	handler := NewNoteHandler(ns)
 	mux.HandleFunc("GET /", handler.ListWithKeywords)
 	mux.HandleFunc("GET /tag", handler.ListTags)
-	mux.HandleFunc("POST /note", handler.CreateNote)
+	// mux.HandleFunc("POST /note", handler.CreateNote)
 	mux.HandleFunc("POST /", handler.CreateNote)
 	mux.HandleFunc("POST /tag", handler.CreateTag)
 	mux.HandleFunc("POST /chunk", handler.ChunkAndUploadNote)

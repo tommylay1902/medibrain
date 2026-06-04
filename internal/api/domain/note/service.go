@@ -36,9 +36,9 @@ func (ns *NoteService) ListWithKeywords(ctx context.Context) ([]*NoteWithTags, e
 	return result, err
 }
 
-func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags []string) error {
+func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags []string) (*uuid.UUID, error) {
 	if len(tags) > 7 {
-		return errors.New("a note can only have a maxium of 7 tags")
+		return nil, errors.New("a note can only have a maxium of 7 tags")
 	}
 
 	now := time.Now()
@@ -53,7 +53,7 @@ func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags 
 
 	uow, ctx, err := ns.uow.Begin(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	defer func() {
@@ -66,12 +66,12 @@ func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags 
 
 	noteID, err := ns.repo.CreateNote(ctx, note)
 	if err != nil {
-		return fmt.Errorf("error creating notes: %v", err)
+		return nil, fmt.Errorf("error creating notes: %v", err)
 	}
 
 	results, err := ns.repo.CreateTagBatch(ctx, tags)
 	if err != nil {
-		return fmt.Errorf("error creating tag batch: %v", err)
+		return nil, fmt.Errorf("error creating tag batch: %v", err)
 	}
 
 	tagIDs := make([]*uuid.UUID, len(results))
@@ -81,10 +81,14 @@ func (ns *NoteService) CreateNoteWithTags(ctx context.Context, note *Note, tags 
 
 	err = ns.repo.LinkNoteWithTags(ctx, *noteID, tagIDs)
 	if err != nil {
-		return fmt.Errorf("error Linking Notes with Tags: %v", err)
+		return nil, fmt.Errorf("error Linking Notes with Tags: %v", err)
 	}
 
-	return uow.Commit()
+	if err := uow.Commit(); err != nil {
+		return nil, err
+	}
+
+	return noteID, nil
 }
 
 func (ns *NoteService) CreateTag(ctx context.Context, tag Tag) (*Tag, error) {
