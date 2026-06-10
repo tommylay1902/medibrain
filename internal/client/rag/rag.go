@@ -31,7 +31,7 @@ func NewRag() *Rag {
 		panic(err)
 	}
 
-	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(300), textsplitter.WithChunkOverlap(40))
+	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(1000), textsplitter.WithChunkOverlap(200))
 
 	return &Rag{
 		qClient:  client,
@@ -211,7 +211,7 @@ func GenerateCollections(r *Rag) {
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "documents",
 		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     384,
+			Size:     1024,
 			Distance: qdrant.Distance_Cosine,
 		}),
 	})
@@ -223,7 +223,7 @@ func GenerateCollections(r *Rag) {
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "audio_logs",
 		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     384,
+			Size:     1024,
 			Distance: qdrant.Distance_Cosine,
 		}),
 	})
@@ -236,7 +236,7 @@ func GenerateCollections(r *Rag) {
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "notes",
 		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     384,
+			Size:     1024,
 			Distance: qdrant.Distance_Cosine,
 		}),
 	})
@@ -246,9 +246,13 @@ func GenerateCollections(r *Rag) {
 	}
 }
 
+type Options struct {
+	Dimensions int `json:"dimensions"`
+}
 type EmbeddingRequest struct {
-	Model  string `json:"model"`
-	Prompt string `json:"prompt"`
+	Model   string  `json:"model"`
+	Prompt  string  `json:"prompt"`
+	Options Options `json:"options"`
 }
 
 type EmbeddingResponse struct {
@@ -256,7 +260,7 @@ type EmbeddingResponse struct {
 }
 
 func getEmbedding(text string) ([]float32, error) {
-	reqBody := EmbeddingRequest{Model: "all-minilm:l6-v2", Prompt: text}
+	reqBody := EmbeddingRequest{Model: "qwen3-embedding:0.6b", Options: Options{Dimensions: 1024}, Prompt: text}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		slog.Error("failed to marshal request", slog.Any("err", err))
@@ -290,6 +294,7 @@ func getEmbedding(text string) ([]float32, error) {
 		slog.Error("failed to parse response", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
+	// fmt.Println(len(embeddingResp.Embedding))
 	return embeddingResp.Embedding, nil
 }
 
