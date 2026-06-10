@@ -1,11 +1,16 @@
 services:
+  vosk:
+    image: alphacep/kaldi-en:latest
+    container_name: medibrain-vosk
+    ports:
+      - 2700:2700
   ollama:
     image: ollama/ollama:latest
     ports:
-        - 11434:11434
+      - 11434:11434
     volumes:
-        - ollama_data:/root/.ollama
-        - ./ollama-entrypoint.sh:/ollama-entrypoint.sh
+      - ollama_data:/root/.ollama
+      - ./ollama-entrypoint.sh:/ollama-entrypoint.sh
     container_name: ollama
     pull_policy: always
     tty: true

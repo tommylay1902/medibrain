@@ -5,6 +5,5 @@ ollama serve &
 echo "Waiting for Ollama to start..."
 sleep 5
 
-ollama pull all-minilm:l6-v2
-
+ollama pull qwen3-embedding:0.6b
 wait
