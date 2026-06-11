@@ -1,4 +1,14 @@
 services:
+  # api:
+  #   build: ./cmd/api/main.go
+  #   command: ./bin/api
+  #   environment:
+  #     REDIS_ADDR: redis:6379
+  # worker:
+  #   build: ./cmd/worker/main.go
+  #   command: ./bin/worker
+  #   environment:
+  #     REDIS_ADDR: redis:6379
   vosk:
     image: alphacep/kaldi-en:latest
     container_name: medibrain-vosk
@@ -73,6 +83,14 @@ services:
       start_period: 30s
     networks:
       - app-network
+  redis:
+    image: redis:7-alpine
+    container_name: redis-cache
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
   qdrant:
     image: qdrant/qdrant
     container_name: qdrant
@@ -91,6 +109,8 @@ volumes:
   qdrant_data:
     driver: local
   ollama_data:
+  redis_data:
+    driver: local
 
 networks:
   app-network:
