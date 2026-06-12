@@ -1,19 +1,60 @@
 services:
-  # api:
-  #   build: ./cmd/api/main.go
-  #   command: ./bin/api
-  #   environment:
-  #     REDIS_ADDR: redis:6379
-  # worker:
-  #   build: ./cmd/worker/main.go
-  #   command: ./bin/worker
-  #   environment:
-  #     REDIS_ADDR: redis:6379
+  server:
+    ports:
+      - 8080:8080
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      REDIS_ADDR: redis-cache:6379
+      SEAWEED_MASTER: file-storage-master:9333 # Add this
+      STIRLING_URL: http://stirling:8080/api/v1 # Add this
+      STIRLING_API_KEY: your-api-key-here # Add this
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      file-storage-master:
+        condition: service_healthy
+
+  worker-server:
+    ports:
+      - 8081:8081
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: worker
+    environment:
+      REDIS_ADDR: redis-cache:6379
+      SEAWEED_MASTER: file-storage-master:9333 # Add this
+      STIRLING_URL: http://stirling:8080/api/v1 # Add this
+      STIRLING_API_KEY: your-api-key-here # Add this
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      file-storage-master:
+        condition: service_healthy
+
   vosk:
     image: alphacep/kaldi-en:latest
     container_name: medibrain-vosk
     ports:
       - 2700:2700
+    networks:
+      - app-network
+
   ollama:
     image: ollama/ollama:latest
     ports:
@@ -28,15 +69,14 @@ services:
     entrypoint: ["/usr/bin/bash", "/ollama-entrypoint.sh"]
     networks:
       - app-network
+
   file-storage-master:
+    container_name: seaweedfs-master
     image: chrislusf/seaweedfs:latest
     ports:
       - "9333:9333"
-    hostname: seaweedfs_master
-    command: "master -ip=seaweedfs_master -port=9333 -mdir=/data"
+    command: "master -ip=file-storage-master -port=9333 -mdir=/data" # Fixed: use service name
     restart: unless-stopped
-    environment:
-      - PUBLIC_URL=http://localhost:9333
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9333/cluster/status"]
       interval: 10s
@@ -47,14 +87,13 @@ services:
       - master_data:/data
     networks:
       - app-network
+
   file-storage-volume:
+    container_name: seaweedfs-volume
     image: chrislusf/seaweedfs:latest
     ports:
       - "9000:9000"
-    environment:
-      - PUBLIC_URL=http:localhost:9000
-    hostname: seaweedfs_volume
-    command: "volume -dir=/data -publicUrl=localhost:9000 -port=9000 -ip=seaweedfs_volume -mserver=seaweedfs_master:9333"
+    command: "volume -dir=/data -publicUrl=localhost:9000 -port=9000 -ip=file-storage-volume -mserver=file-storage-master:9333" # Fixed: use service name
     restart: unless-stopped
     networks:
       - app-network
@@ -63,6 +102,7 @@ services:
         condition: service_healthy
     volumes:
       - volume_data:/data
+
   db:
     image: postgres:16
     container_name: medibrain-db
@@ -83,14 +123,23 @@ services:
       start_period: 30s
     networks:
       - app-network
+
   redis:
     image: redis:7-alpine
     container_name: redis-cache
     restart: unless-stopped
     ports:
       - "6379:6379"
+    networks:
+      - app-network
     volumes:
       - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
   qdrant:
     image: qdrant/qdrant
     container_name: qdrant
@@ -102,6 +151,13 @@ services:
     networks:
       - app-network
     restart: always
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/6333"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
 volumes:
   master_data:
   volume_data:

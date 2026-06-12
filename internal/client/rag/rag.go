@@ -23,7 +23,7 @@ type Rag struct {
 
 func NewRag() *Rag {
 	client, err := qdrant.NewClient(&qdrant.Config{
-		Host: "localhost",
+		Host: "qdrant",
 		Port: 6334,
 	})
 	if err != nil {

@@ -61,8 +61,19 @@ db-migrate-force: db-wait
 	fi
 
 qdrant-seed:
-	@echo "Dropping and recreating qdrant collections with Go program..."
-	@cd cmd/qdrant && go run main.go
+	@echo "Seeding Qdrant..."
+	@docker run --rm \
+		--network medibrain_app-network \
+		-e QDRANT_HOST=qdrant \
+		-e QDRANT_PORT=6334 \
+		-e OLLAMA_HOST=ollama \
+		-e OLLAMA_PORT=11434 \
+		-v $(PWD):/app \
+		-w /app \
+		golang:1.25-alpine \
+		sh -c "apk add --no-cache netcat-openbsd && \
+			while ! nc -z qdrant 6334; do sleep 1; done && \
+			go run cmd/qdrant/main.go"
 
 db-seed: db-wait
 	@echo "Seeding database with Go program..."

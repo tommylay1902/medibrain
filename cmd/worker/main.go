@@ -15,7 +15,7 @@ func main() {
 		Rag: rag,
 	}
 
-	redisOpt := asynq.RedisClientOpt{Addr: "localhost:6379"}
+	redisOpt := asynq.RedisClientOpt{Addr: "redis-cache:6379"}
 	srv := asynq.NewServer(redisOpt, asynq.Config{Concurrency: 4})
 	mux := asynq.NewServeMux()
 	mux.HandleFunc(task.TypeIngestDocument, handler.Handle)

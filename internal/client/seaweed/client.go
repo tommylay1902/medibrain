@@ -15,8 +15,8 @@ import (
 
 func NewClient() *SeaWeedClient {
 	return &SeaWeedClient{
-		MasterURL: "http://localhost:9333",
-		VolumeURL: "http://localhost:9000",
+		MasterURL: "http://seaweedfs-master:9333",
+		VolumeURL: "http://seaweedfs-volume:9000",
 		Client:    &http.Client{},
 	}
 }
@@ -40,7 +40,7 @@ func (swc *SeaWeedClient) Assign() (*AssignResponse, error) {
 }
 
 func (swc *SeaWeedClient) StoreFile(publicURL string, fid string, pdfBytes []byte, header *multipart.FileHeader) error {
-	url := fmt.Sprintf("http://%s/%s", publicURL, fid)
+	url := fmt.Sprintf("%s/%s", swc.VolumeURL, fid)
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 	part, err := writer.CreateFormFile("file", header.Filename)
@@ -85,7 +85,7 @@ func (swc *SeaWeedClient) StoreFile(publicURL string, fid string, pdfBytes []byt
 }
 
 func (swc *SeaWeedClient) Delete(publicURL string, fid string) error {
-	url := fmt.Sprintf("http://%s/%s", publicURL, fid)
+	url := fmt.Sprintf("%s/%s", swc.VolumeURL, fid)
 
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
