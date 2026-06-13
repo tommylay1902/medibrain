@@ -40,6 +40,7 @@ func NewRag() *Rag {
 }
 
 func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
+	slog.Info("entering store document")
 	docTitle := ""
 	if title != nil {
 		docTitle = *title
@@ -268,7 +269,7 @@ func getEmbedding(text string) ([]float32, error) {
 	}
 
 	resp, err := http.Post(
-		"http://localhost:11434/api/embeddings",
+		"http://ollama:11434/api/embeddings",
 		"application/json",
 		bytes.NewBuffer(jsonBody),
 	)

@@ -37,6 +37,7 @@ services:
       STIRLING_API_KEY: your-api-key-here # Add this
     networks:
       - app-network
+    restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +53,7 @@ services:
     container_name: medibrain-vosk
     ports:
       - 2700:2700
+    restart: unless-stopped
     networks:
       - app-network
 

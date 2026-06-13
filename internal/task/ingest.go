@@ -32,6 +32,7 @@ func (h *IngestHandler) Handle(ctx context.Context, t *asynq.Task) error {
 		slog.Error("error unmarshaling payload")
 		return err
 	}
+	slog.Info("calling rag store document")
 	if err := h.Rag.StoreDocument(
 		p.Text,
 		p.Fid,
@@ -44,5 +45,6 @@ func (h *IngestHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	}
 
 	slog.Info("rag indexing complete", "fid", p.Fid)
+
 	return nil
 }

@@ -26,6 +26,8 @@ help:
 	@echo "  make db-seed     - Seed the database with data"
 	@echo "  make run-database - Run your database seeding command"
 	@echo "  make db-tables - List all database tables"
+	@echo "  make data-init - Setup collection and db scaffolding"
+	
 
 db-create-migrate: db-wait
 	@echo "Creating migration..."
@@ -60,7 +62,13 @@ db-migrate-force: db-wait
 		echo "migrate folder not found at internal/database/migrate"; \
 	fi
 
-qdrant-seed:
+db-migrate-up-all:
+	@$(MAKE) db-migrate-up STEPS=
+
+data-init: qdrant-init  db-migrate-up-all
+
+
+qdrant-init:
 	@echo "Seeding Qdrant..."
 	@docker run --rm \
 		--network medibrain_app-network \
@@ -74,10 +82,6 @@ qdrant-seed:
 		sh -c "apk add --no-cache netcat-openbsd && \
 			while ! nc -z qdrant 6334; do sleep 1; done && \
 			go run cmd/qdrant/main.go"
-
-db-seed: db-wait
-	@echo "Seeding database with Go program..."
-	@cd cmd/database && go run main.go
 
 db-tables: db-wait
 	@echo "Listing all tables..."
