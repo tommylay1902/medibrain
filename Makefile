@@ -17,6 +17,7 @@ PSQL_URI=postgresql://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)
 
 help:
 	@echo "Available commands:"
+	@echo "DATA"
 	@echo "  make db-create-migrate MIGRATION_NAME=migration_name - Create a new migration files (up and down)"
 	@echo "  make db-migrate-up STEPS=<number>  - run migrations by step (default is 1, you can provide empty after argument to up all )"
 	@echo "  make db-migrate-down STEPS=<number> - down migrations by step (default is 1, you can provide empty space after argument to down all)"
@@ -27,8 +28,37 @@ help:
 	@echo "  make run-database - Run your database seeding command"
 	@echo "  make db-tables - List all database tables"
 	@echo "  make data-init - Setup collection and db scaffolding"
-	
+	@echo "DOCKER"
+	@echo "  make build                - Build all services with no cache"
+	@echo "  make tear-down            - Tear down all containers and volumes"
+	@echo "  make start-up             - Start up all containers"
+	@echo "  make restart-application  - Full tear down, start up and data init"
+	@echo "  make restart-go           - Rebuild and restart only Go services (server, worker-server)"
 
+
+# Docker scripts
+build: 
+	@echo "Building application"
+	docker compose -f docker/docker-compose.yml build --no-cache
+
+tear-down:
+	@echo "Tearing down docker application"
+	docker compose -f docker/docker-compose.yml down -v
+
+start-up:
+	@echo "Staring up docker application"
+	docker compose -f docker/docker-compose.yml up -d
+
+restart-application: tear-down start-up data-init
+
+restart-go:
+	@echo "Restarting Go services..."
+	docker compose -f docker/docker-compose.yml stop server worker-server
+	docker compose -f docker/docker-compose.yml rm -f server worker-server
+	docker compose -f docker/docker-compose.yml build --no-cache server worker-server
+	docker compose -f docker/docker-compose.yml up -d server worker-server
+
+# Data scripts
 db-create-migrate: db-wait
 	@echo "Creating migration..."
 	@if [ -d "internal/database/migrate" ]; then \
@@ -66,7 +96,6 @@ db-migrate-up-all:
 	@$(MAKE) db-migrate-up STEPS=
 
 data-init: qdrant-init  db-migrate-up-all
-
 
 qdrant-init:
 	@echo "Seeding Qdrant..."

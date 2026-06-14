@@ -62,6 +62,7 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 	for _, chunk := range chunks {
 		vec, err := getEmbedding(chunk)
 		if err != nil {
+			slog.Error(err.Error())
 			continue
 		}
 		payload := qdrant.NewValueMap(map[string]any{
@@ -295,7 +296,7 @@ func getEmbedding(text string) ([]float32, error) {
 		slog.Error("failed to parse response", slog.Any("err", err))
 		return nil, fmt.Errorf("failed to parse response: %w", err)
 	}
-	// fmt.Println(len(embeddingResp.Embedding))
+	slog.Info(fmt.Sprintf("%d", (len(embeddingResp.Embedding))))
 	return embeddingResp.Embedding, nil
 }
 

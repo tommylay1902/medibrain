@@ -1,0 +1,68 @@
+name: medibrain
+include:
+  - docker-compose-data.yml
+  - docker-compose-fs.yml
+  - docker-compose-ollama.yml
+  - docker-compose-vosk.yml
+services:
+  server:
+    ports:
+      - 8080:8080
+    build:
+      context: ../
+      dockerfile: Dockerfile
+      target: api
+    environment:
+      REDIS_ADDR: redis-cache:6379
+      SEAWEED_MASTER: file-storage-master:9333
+      STIRLING_URL: http://stirling:8080/api/v1
+    networks:
+      - app-network
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      file-storage-master:
+        condition: service_healthy
+
+  worker-server:
+    ports:
+      - 8081:8081
+    build:
+      context: ../
+      dockerfile: Dockerfile
+      target: worker
+    environment:
+      REDIS_ADDR: redis-cache:6379
+      SEAWEED_MASTER: file-storage-master:9333 # Add this
+      STIRLING_URL: http://stirling:8080/api/v1 # Add this
+      STIRLING_API_KEY: your-api-key-here # Add this
+    networks:
+      - app-network
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      file-storage-master:
+        condition: service_healthy
+
+volumes:
+  ollama_data:
+  master_data:
+  volume_data:
+  db_data:
+  qdrant_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
