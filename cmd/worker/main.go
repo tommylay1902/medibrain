@@ -5,12 +5,22 @@ import (
 	"log/slog"
 
 	"github.com/hibiken/asynq"
+	"github.com/tmc/langchaingo/llms/ollama"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
 	"github.com/tommylay1902/medibrain/internal/task"
 )
 
 func main() {
-	rag := rag.NewRag()
+	llm, err := ollama.New(
+		ollama.WithModel("llama3.2:1b"),
+		ollama.WithServerURL("http://ollama:11434"),
+	)
+	if err != nil {
+
+		slog.Error(err.Error())
+		panic(err)
+	}
+	rag := rag.NewRag(llm)
 	handler := &task.IngestHandler{
 		Rag: rag,
 	}

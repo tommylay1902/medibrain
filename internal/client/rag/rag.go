@@ -9,19 +9,24 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/qdrant/go-client/qdrant"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
+	"github.com/tmc/langchaingo/prompts"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/textsplitter"
 )
 
 type Rag struct {
+	llm      *ollama.LLM
 	qClient  *qdrant.Client
 	splitter *textsplitter.RecursiveCharacter
 }
 
-func NewRag() *Rag {
+func NewRag(llm *ollama.LLM) *Rag {
 	client, err := qdrant.NewClient(&qdrant.Config{
 		Host: "qdrant",
 		Port: 6334,
@@ -34,6 +39,7 @@ func NewRag() *Rag {
 	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(1000), textsplitter.WithChunkOverlap(200))
 
 	return &Rag{
+		llm:      llm,
 		qClient:  client,
 		splitter: &splitter,
 	}
@@ -124,7 +130,7 @@ type Response struct {
 	Keywords string `json:"keywords"`
 }
 
-func (r *Rag) GetChunksByQuery(query string) []Response {
+func (r *Rag) GetChunksByQuery(query string) ([]Response, string) {
 	vec, err := getEmbedding(query)
 	if err != nil {
 		panic(err)
@@ -139,6 +145,7 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 		panic(err)
 	}
 
+	mergedChunks := make([]string, 0, len(results))
 	responses := make([]Response, 0, len(results))
 
 	for _, result := range results {
@@ -165,10 +172,49 @@ func (r *Rag) GetChunksByQuery(query string) []Response {
 			r.Keywords = keywords
 		}
 
+		mergedChunks = append(mergedChunks, r.Content)
 		responses = append(responses, r)
 	}
 
-	return responses
+	template := prompts.NewPromptTemplate(
+		`You are a medical professional for question-answering tasks for someone who needs answers quickly 
+		(answer with concise and good summaries of the provided context).
+		Use the following pieces of retrieved context to formulate your answers.
+		Remember you are a medical professional so you can't give guesses as answers.
+		If you can't find the answer within the context, just say you don't know.
+		QUESTION: {{.question}}
+		CONTEXT: {{.context}}
+		`,
+		[]string{"question", "context"},
+	)
+
+	chunks := strings.Join(mergedChunks, " ")
+	formattedPrompt, _ := template.Format(map[string]any{
+		"question": query,
+		"context":  chunks,
+	})
+
+	return responses, formattedPrompt
+}
+
+func (r *Rag) StreamResponse(ctx context.Context, prompt string, w http.ResponseWriter, rc *http.ResponseController) error {
+	_, err := llms.GenerateFromSinglePrompt(ctx, r.llm,
+		prompt, llms.WithTemperature(0.0),
+		llms.WithStreamingFunc(
+			func(ctx context.Context, chunk []byte) error {
+				slog.Info(string(chunk))
+				_, writeErr := fmt.Fprintf(w, "data: %s\n\n", string(chunk))
+				if writeErr != nil {
+					return writeErr
+				}
+
+				return rc.Flush()
+			}),
+	)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+	return nil
 }
 
 func GenerateCollections(r *Rag) {
@@ -304,7 +350,7 @@ func getEmbedding(text string) ([]float32, error) {
 // 	// TODO: need to fix the pathing for loading env
 // 	err := godotenv.Load()
 // 	if err != nil {
-// 		slog.Error("error loading .env")
+// 		slog.Error(yerror loading .env")
 // 		wd, _ := os.Getwd()
 // 		fmt.Printf("Current working directory: %s\n", wd)
 // 		panic(err)

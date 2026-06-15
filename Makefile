@@ -49,14 +49,26 @@ start-up:
 	@echo "Staring up docker application"
 	docker compose -f docker/docker-compose.yml up -d
 
-restart-application: tear-down start-up data-init
-
 restart-go:
 	@echo "Restarting Go services..."
 	docker compose -f docker/docker-compose.yml stop server worker-server
 	docker compose -f docker/docker-compose.yml rm -f server worker-server
 	docker compose -f docker/docker-compose.yml build --no-cache server worker-server
 	docker compose -f docker/docker-compose.yml up -d server worker-server
+
+restart-application: tear-down-preserve-ollama start-up data-init
+
+tear-down-preserve-ollama:
+	@echo "Tearing down (preserving ollama models)..."
+	docker compose -f docker/docker-compose.yml down
+	docker volume rm \
+		medibrain_db_data \
+		medibrain_redis_data \
+		medibrain_qdrant_data \
+		medibrain_master_data \
+		medibrain_volume_data \
+		2>/dev/null || true
+
 
 # Data scripts
 db-create-migrate: db-wait
