@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"time"
 
-	"github.com/google/uuid"
 	"github.com/hibiken/asynq"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
@@ -209,11 +209,11 @@ func (dps *DocumentPipelineService) ChunkAndUploadText(pdfBytes []byte, header *
 		return "", err
 	}
 
-	jobID := uuid.NewString()
 	t := asynq.NewTask(task.TypeIngestDocument, payload, asynq.MaxRetry(5))
-	if _, err := dps.asynqTask.Enqueue(t); err != nil {
+	info, err := dps.asynqTask.Enqueue(t, asynq.Queue("ingest"), asynq.Retention(24*time.Hour))
+	if err != nil {
 		return "", fmt.Errorf("enqueue ingest: %w", err)
 	}
 
-	return jobID, nil
+	return info.ID, nil
 }
