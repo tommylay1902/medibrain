@@ -4,8 +4,10 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/hibiken/asynq"
 	"github.com/tommylay1902/medibrain/internal/api"
 	"github.com/tommylay1902/medibrain/internal/api/domain/document"
+	"github.com/tommylay1902/medibrain/internal/api/domain/job"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 	"github.com/tommylay1902/medibrain/internal/api/domain/note"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
@@ -29,9 +31,18 @@ func main() {
 	sc := stirling.NewClient()
 	swc := seaweedclient.NewClient()
 
-	dps := document.NewService(dmr, swc, sc, dms, rag)
+	// start up asynq service
+	redisOpt := asynq.RedisClientOpt{Addr: "redis-cache:6379"}
+	asynqClient := asynq.NewClient(redisOpt)
+	asynqInspector := asynq.NewInspector(redisOpt)
 
-	mux := api.NewMux(dms, dps, ns)
+	defer asynqClient.Close()
+	defer asynqInspector.Close()
+	js := job.NewJobService(asynqInspector)
+
+	dps := document.NewService(dmr, swc, sc, dms, rag, asynqClient)
+
+	mux := api.NewMux(dms, dps, ns, js)
 
 	server := api.NewServer(":8080", mux)
 	server.StartServer()

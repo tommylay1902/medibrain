@@ -21,7 +21,7 @@ type StirlingClient struct {
 
 func NewClient() *StirlingClient {
 	return &StirlingClient{
-		BaseURL: "http://localhost:3000/api/v1",
+		BaseURL: "http://Stirling:8080/api/v1",
 		Client:  &http.Client{},
 	}
 }

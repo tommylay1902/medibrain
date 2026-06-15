@@ -1,14 +1,18 @@
 package document
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"mime/multipart"
+	"time"
 
+	"github.com/hibiken/asynq"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
+	"github.com/tommylay1902/medibrain/internal/task"
 )
 
 type DocumentPipelineService struct {
@@ -17,6 +21,7 @@ type DocumentPipelineService struct {
 	seaweedClient  *seaweedclient.SeaWeedClient
 	dms            *metadata.MetadataService
 	ragClient      *rag.Rag
+	asynqTask      *asynq.Client
 }
 
 func NewService(
@@ -25,6 +30,7 @@ func NewService(
 	stirlingClient *stirling.StirlingClient,
 	dms *metadata.MetadataService,
 	ragClient *rag.Rag,
+	asynqTask *asynq.Client,
 ) *DocumentPipelineService {
 	return &DocumentPipelineService{
 		dmRepo:         dmRepo,
@@ -32,6 +38,7 @@ func NewService(
 		stirlingClient: stirlingClient,
 		dms:            dms,
 		ragClient:      ragClient,
+		asynqTask:      asynqTask,
 	}
 }
 
@@ -177,4 +184,36 @@ func (dps *DocumentPipelineService) cleanupResources(publicURL string, fids ...s
 		}
 	}
 	return errors
+}
+
+func (dps *DocumentPipelineService) ChunkAndUploadText(pdfBytes []byte, header *multipart.FileHeader, apiKey string, fid string) (string, error) {
+	textBody, err := dps.stirlingClient.GetTextFromPdf(pdfBytes, header, apiKey)
+	if err != nil || textBody == nil {
+		return "", fmt.Errorf("stirling get text: %w", err)
+	}
+
+	dm, err := dps.stirlingClient.GetMetaData(pdfBytes, header, apiKey)
+	if err != nil {
+		return "", fmt.Errorf("stirling get metadata: %w", err)
+	}
+
+	payload, err := json.Marshal(task.IngestPayload{
+		Fid:          fid,
+		Text:         *textBody,
+		Title:        dm.Title,
+		CreationDate: dm.CreationDate,
+		UploadDate:   dm.ModificationDate,
+		Keywords:     dm.Keywords,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	t := asynq.NewTask(task.TypeIngestDocument, payload, asynq.MaxRetry(5))
+	info, err := dps.asynqTask.Enqueue(t, asynq.Queue("ingest"), asynq.Retention(24*time.Hour))
+	if err != nil {
+		return "", fmt.Errorf("enqueue ingest: %w", err)
+	}
+
+	return info.ID, nil
 }

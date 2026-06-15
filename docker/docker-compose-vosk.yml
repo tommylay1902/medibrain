@@ -1,0 +1,13 @@
+name: medibrain
+services:
+  vosk:
+    image: alphacep/kaldi-en:latest
+    container_name: medibrain-vosk
+    ports:
+      - 2700:2700
+    restart: unless-stopped
+    networks:
+      - app-network
+networks:
+  app-network:
+    name: medibrain_app-network

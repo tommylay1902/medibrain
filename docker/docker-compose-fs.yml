@@ -1,0 +1,37 @@
+name: medibrain
+services:
+  file-storage-master:
+    container_name: seaweedfs-master
+    image: chrislusf/seaweedfs:latest
+    ports:
+      - "9333:9333"
+    command: "master -ip=file-storage-master -port=9333 -mdir=/data" # Fixed: use service name
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9333/cluster/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    volumes:
+      - master_data:/data
+    networks:
+      - app-network
+
+  file-storage-volume:
+    container_name: seaweedfs-volume
+    image: chrislusf/seaweedfs:latest
+    ports:
+      - "9000:9000"
+    command: "volume -dir=/data -publicUrl=localhost:9000 -port=9000 -ip=file-storage-volume -mserver=file-storage-master:9333" # Fixed: use service name
+    restart: unless-stopped
+    networks:
+      - app-network
+    depends_on:
+      file-storage-master:
+        condition: service_healthy
+    volumes:
+      - volume_data:/data
+networks:
+  app-network:
+    name: medibrain_app-network

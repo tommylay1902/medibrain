@@ -16,7 +16,7 @@ func NewRoutes(dps *DocumentPipelineService) *Route {
 	mux.HandleFunc("POST /upload-with-edit", handler.UploadDocumentPipelineWithEdit)
 	// mux.HandleFunc("POST /upload-chunks", handler.UploadChunks)
 	mux.HandleFunc("POST /query", handler.GetSearchQuery)
-	mux.HandleFunc("POST /chunk", handler.ChunkAndUploadText)
+	// mux.HandleFunc("POST /chunk", handler.ChunkAndUploadText)
 	route := &Route{
 		Mux: mux,
 	}
