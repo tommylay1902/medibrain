@@ -8,9 +8,9 @@ until echo > /dev/tcp/localhost/11434 2>/dev/null; do
 done
 
 # Only pull if not already downloaded
-if ! ollama list | grep -q "llama3.2:9b"; then
-    echo "Pulling llama3.2:9b..."
-    ollama pull llama3.2:9b
+if ! ollama list | grep -q "gemma3:4b"; then
+    echo "Pulling gemma3:4b..."
+    ollama pull gemma3:4b
 fi
 
 if ! ollama list | grep -q "qwen3-embedding"; then

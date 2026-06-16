@@ -188,6 +188,8 @@ type Response struct {
 	Fid      string `json:"fid"`
 	Title    string `json:"title"`
 	Keywords string `json:"keywords"`
+	Page     int64  `json:"page"`
+	Filename string `json:"filename"`
 }
 
 func (r *Rag) GetChunksByQuery(query string) ([]Response, string) {
@@ -210,45 +212,62 @@ func (r *Rag) GetChunksByQuery(query string) ([]Response, string) {
 
 	for _, result := range results {
 		payload := result.Payload
-
 		var r Response
 		if fidValue, exists := payload["fid"]; exists && fidValue != nil {
-			fid := fidValue.GetStringValue() // Use qdrant.Value methods
-			r.Fid = fid
+			r.Fid = fidValue.GetStringValue()
 		}
-
 		if contentValue, exists := payload["content"]; exists && contentValue != nil {
-			content := contentValue.GetStringValue()
-			r.Content = content
+			r.Content = contentValue.GetStringValue()
 		}
-
 		if titleValue, exists := payload["title"]; exists && titleValue != nil {
-			title := titleValue.GetStringValue()
-			r.Title = title
+			r.Title = titleValue.GetStringValue()
 		}
-
 		if keywordsValue, exists := payload["keywords"]; exists && keywordsValue != nil {
-			keywords := keywordsValue.GetStringValue()
-			r.Keywords = keywords
+			r.Keywords = keywordsValue.GetStringValue()
+		}
+		if filenameValue, exists := payload["filename"]; exists && filenameValue != nil {
+			r.Filename = filenameValue.GetStringValue()
+		}
+		if pageValue, exists := payload["page"]; exists && pageValue != nil {
+			r.Page = pageValue.GetIntegerValue()
 		}
 
-		mergedChunks = append(mergedChunks, r.Content)
+		slog.Info(fmt.Sprintf(
+			"fid: %s, filename: %s, page: %d, content: %s",
+			r.Fid, r.Filename, r.Page, r.Content,
+		))
+
+		mergedChunks = append(mergedChunks, fmt.Sprintf(
+			"fid: %s, filename: %s, page: %d, content: %s",
+			r.Fid, r.Filename, r.Page, r.Content,
+		))
 		responses = append(responses, r)
 	}
 
 	template := prompts.NewPromptTemplate(
-		`You are a medical professional for question-answering tasks for someone who needs answers quickly 
-		(answer with concise and good summaries of the provided context).
-		Use the following pieces of retrieved context to formulate your answers.
-		Remember you are a medical professional so you can't give guesses as answers.
-		If you can't find the answer within the context, just say you don't know.
-		QUESTION: {{.question}}
-		CONTEXT: {{.context}}
-		`,
+		`You are a medical professional for question-answering tasks for someone who needs answers quickly
+    (answer with concise and good summaries of the provided context).
+    Use the following pieces of retrieved context to formulate your answers.
+    Remember you are a medical professional so you can't give guesses as answers.
+    If you can't find the answer within the context, just say you don't know.
+
+    Each piece of context below is formatted as:
+    fid: <document id>, filename: <source file>, page: <page number>, content: <text>
+
+    Whenever you state a fact drawn from the context, immediately follow that sentence
+		with a citation using the fid value, in this exact format: [fid:<document id>, filename: <filename>, page: <page number>]
+
+		Example: "Aspirin can reduce inflammation [fid:abc123, filename: patient.pdf, page: 1]."
+
+    Do not omit the citation for any claim taken from the context.
+
+    QUESTION: {{.question}}
+    CONTEXT: {{.context}}
+    `,
 		[]string{"question", "context"},
 	)
 
-	chunks := strings.Join(mergedChunks, " ")
+	chunks := strings.Join(mergedChunks, "\n\n")
 	formattedPrompt, _ := template.Format(map[string]any{
 		"question": query,
 		"context":  chunks,
@@ -262,7 +281,6 @@ func (r *Rag) StreamResponse(ctx context.Context, prompt string, w http.Response
 		prompt, llms.WithTemperature(0.0),
 		llms.WithStreamingFunc(
 			func(ctx context.Context, chunk []byte) error {
-				slog.Info(string(chunk))
 				_, writeErr := fmt.Fprintf(w, "data: %s\n\n", string(chunk))
 				if writeErr != nil {
 					return writeErr
