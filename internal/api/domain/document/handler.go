@@ -241,18 +241,19 @@ type SearchBody struct {
 }
 
 func (dph *DocumentPipelineHandler) GetSearchQuery(w http.ResponseWriter, req *http.Request) {
-	var searchBody SearchBody
-	if err := json.NewDecoder(req.Body).Decode(&searchBody); err != nil {
-		slog.Error("request body parsing err", slog.Any("err", err))
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	search := req.URL.Query().Get("search")
+	rc := http.NewResponseController(w)
 
-	results := dph.service.ragClient.GetChunksByQuery(searchBody.Search)
-	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(results); err != nil {
-		slog.Error("err getting chunk by query", slog.Any("err", err))
+	ctx := req.Context()
+
+	_, prompt := dph.service.ragClient.GetChunksByQuery(search)
+	err := dph.service.ragClient.StreamResponse(ctx, prompt, w, rc)
+	if err != nil {
+		slog.Error("stream error", slog.Any("err", err))
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 }

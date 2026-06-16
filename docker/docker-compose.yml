@@ -4,6 +4,7 @@ include:
   - docker-compose-fs.yml
   - docker-compose-ollama.yml
   - docker-compose-vosk.yml
+  - docker-compose-sidecar.yml
 services:
   server:
     ports:

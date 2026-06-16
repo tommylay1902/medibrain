@@ -8,20 +8,28 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/qdrant/go-client/qdrant"
+	"github.com/tmc/langchaingo/llms"
+	"github.com/tmc/langchaingo/llms/ollama"
+	"github.com/tmc/langchaingo/prompts"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/textsplitter"
+	client "github.com/tommylay1902/medibrain/internal/client/pydocument"
 )
 
 type Rag struct {
-	qClient  *qdrant.Client
-	splitter *textsplitter.RecursiveCharacter
+	llm        *ollama.LLM
+	qClient    *qdrant.Client
+	splitter   *textsplitter.RecursiveCharacter
+	pydocument *client.Pydocument
 }
 
-func NewRag() *Rag {
+func NewRag(llm *ollama.LLM, pydocument *client.Pydocument) *Rag {
 	client, err := qdrant.NewClient(&qdrant.Config{
 		Host: "qdrant",
 		Port: 6334,
@@ -31,20 +39,20 @@ func NewRag() *Rag {
 		panic(err)
 	}
 
-	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(1000), textsplitter.WithChunkOverlap(200))
-
 	return &Rag{
-		qClient:  client,
-		splitter: &splitter,
+		llm:        llm,
+		qClient:    client,
+		pydocument: pydocument,
 	}
 }
 
-func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
-	slog.Info("entering store document")
+func (r *Rag) StoreDocument(pdfBytes []byte, header *multipart.FileHeader, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
+	slog.Info(header.Filename)
 	docTitle := ""
 	if title != nil {
 		docTitle = *title
 	}
+
 	docUploadDate := ""
 	if uploadDate != nil {
 		docUploadDate = *uploadDate
@@ -54,13 +62,16 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 	if creationDate != nil {
 		docCreationDate = *creationDate
 	}
-	document := schema.Document{
-		PageContent: doc,
+
+	splitResponse, err := r.pydocument.GetDocumentSplits(pdfBytes, header)
+	if err != nil {
+		slog.Error("error getting document splits", slog.Any("err", err))
+		return err
 	}
-	chunks, _ := r.splitter.SplitText(document.PageContent)
-	points := make([]*qdrant.PointStruct, 0, len(chunks))
-	for _, chunk := range chunks {
-		vec, err := getEmbedding(chunk)
+
+	points := make([]*qdrant.PointStruct, 0, len(splitResponse.Chunks))
+	for _, chunk := range splitResponse.Chunks {
+		vec, err := getEmbedding(chunk.Text)
 		if err != nil {
 			slog.Error(err.Error())
 			continue
@@ -68,14 +79,25 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 		payload := qdrant.NewValueMap(map[string]any{
 			"fid":          fid,
 			"title":        docTitle,
-			"content":      chunk,
+			"page":         chunk.Page,
+			"filename":     header.Filename,
+			"content":      chunk.Text,
 			"uploadDate":   docUploadDate,
 			"creationDate": docCreationDate,
 			"keywords":     keywords,
 		})
-		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
+
+		points = append(points, &qdrant.PointStruct{
+			Id: qdrant.NewID(uuid.NewString()),
+			Vectors: qdrant.NewVectorsMap(map[string]*qdrant.Vector{
+				"dense":  qdrant.NewVector(vec...),
+				"sparse": qdrant.NewVectorDocument(&qdrant.Document{Text: chunk.Text, Model: "qdrant/bm25"}),
+			}),
+			Payload: payload,
+		})
 	}
-	_, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+
+	_, err = r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
 		CollectionName: "documents",
 		Points:         points,
 	})
@@ -83,7 +105,6 @@ func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *s
 		slog.Error("error upserting chunk into qdrant", slog.Any("err", err))
 		return err
 	}
-
 	return nil
 }
 
@@ -122,53 +143,129 @@ type Response struct {
 	Fid      string `json:"fid"`
 	Title    string `json:"title"`
 	Keywords string `json:"keywords"`
+	Page     int64  `json:"page"`
+	Filename string `json:"filename"`
 }
 
-func (r *Rag) GetChunksByQuery(query string) []Response {
+func (r *Rag) GetChunksByQuery(query string) ([]Response, string) {
 	vec, err := getEmbedding(query)
 	if err != nil {
 		panic(err)
 	}
 	results, err := r.qClient.Query(context.Background(), &qdrant.QueryPoints{
 		CollectionName: "documents",
-		Query:          qdrant.NewQuery(vec...),
-		WithPayload:    qdrant.NewWithPayload(true),
+		Prefetch: []*qdrant.PrefetchQuery{
+			{
+				Query: qdrant.NewQuery(vec...),
+				Using: qdrant.PtrOf("dense"),
+				Limit: qdrant.PtrOf(uint64(20)),
+			},
+			{
+				Query: qdrant.NewQueryDocument(&qdrant.Document{
+					Text:  query,
+					Model: "qdrant/bm25",
+				}),
+				Using: qdrant.PtrOf("sparse"),
+				Limit: qdrant.PtrOf(uint64(20)),
+			},
+		},
+		Query: qdrant.NewQueryRRF(&qdrant.Rrf{
+			Weights: []float32{1.0, 1.0},
+		}),
+		WithPayload: qdrant.NewWithPayload(true),
+		Limit:       qdrant.PtrOf(uint64(10)),
 	})
 	if err != nil {
 		slog.Error("error getting chunk by query", slog.Any("err", err))
 		panic(err)
 	}
 
+	mergedChunks := make([]string, 0, len(results))
 	responses := make([]Response, 0, len(results))
 
 	for _, result := range results {
 		payload := result.Payload
-
 		var r Response
 		if fidValue, exists := payload["fid"]; exists && fidValue != nil {
-			fid := fidValue.GetStringValue() // Use qdrant.Value methods
-			r.Fid = fid
+			r.Fid = fidValue.GetStringValue()
 		}
-
 		if contentValue, exists := payload["content"]; exists && contentValue != nil {
-			content := contentValue.GetStringValue()
-			r.Content = content
+			r.Content = contentValue.GetStringValue()
 		}
-
 		if titleValue, exists := payload["title"]; exists && titleValue != nil {
-			title := titleValue.GetStringValue()
-			r.Title = title
+			r.Title = titleValue.GetStringValue()
 		}
-
 		if keywordsValue, exists := payload["keywords"]; exists && keywordsValue != nil {
-			keywords := keywordsValue.GetStringValue()
-			r.Keywords = keywords
+			r.Keywords = keywordsValue.GetStringValue()
+		}
+		if filenameValue, exists := payload["filename"]; exists && filenameValue != nil {
+			r.Filename = filenameValue.GetStringValue()
+		}
+		if pageValue, exists := payload["page"]; exists && pageValue != nil {
+			r.Page = pageValue.GetIntegerValue()
 		}
 
+		slog.Info(fmt.Sprintf(
+			"fid: %s, filename: %s, page: %d, content: %s",
+			r.Fid, r.Filename, r.Page, r.Content,
+		))
+
+		mergedChunks = append(mergedChunks, fmt.Sprintf(
+			"fid: %s, filename: %s, page: %d, content: %s",
+			r.Fid, r.Filename, r.Page, r.Content,
+		))
 		responses = append(responses, r)
 	}
 
-	return responses
+	template := prompts.NewPromptTemplate(
+		`You are a medical professional for question-answering tasks for someone who needs answers quickly
+    (answer with concise and good summaries of the provided context).
+    Use the following pieces of retrieved context to formulate your answers.
+    Remember you are a medical professional so you can't give guesses as answers.
+    If you can't find the answer within the context, just say you don't know.
+
+    Each piece of context below is formatted as:
+    fid: <document id>, filename: <source file>, page: <page number>, content: <text>
+
+    Whenever you state a fact drawn from the context, immediately follow that sentence
+		with a citation using the fid value, in this exact format: [fid:<document id>, filename: <filename>, page: <page number>]
+
+		Example: "Aspirin can reduce inflammation [fid:abc123, filename: patient.pdf, page: 1]."
+
+    Do not omit the citation for any claim taken from the context.
+
+    QUESTION: {{.question}}
+    CONTEXT: {{.context}}
+    `,
+		[]string{"question", "context"},
+	)
+
+	chunks := strings.Join(mergedChunks, "\n\n")
+	formattedPrompt, _ := template.Format(map[string]any{
+		"question": query,
+		"context":  chunks,
+	})
+
+	return responses, formattedPrompt
+}
+
+func (r *Rag) StreamResponse(ctx context.Context, prompt string, w http.ResponseWriter, rc *http.ResponseController) error {
+	_, err := llms.GenerateFromSinglePrompt(ctx, r.llm,
+		prompt, llms.WithTemperature(0.0),
+		llms.WithStreamingFunc(
+			func(ctx context.Context, chunk []byte) error {
+				_, writeErr := fmt.Fprintf(w, "data: %s\n\n", string(chunk))
+				if writeErr != nil {
+					return writeErr
+				}
+
+				return rc.Flush()
+			}),
+	)
+	if err != nil {
+		slog.Error(err.Error())
+	}
+	return nil
 }
 
 func GenerateCollections(r *Rag) {
@@ -212,10 +309,21 @@ func GenerateCollections(r *Rag) {
 	}
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "documents",
-		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     1024,
-			Distance: qdrant.Distance_Cosine,
-		}),
+		VectorsConfig: qdrant.NewVectorsConfigMap(
+			map[string]*qdrant.VectorParams{
+				"dense": {
+					Size:     1024,
+					Distance: qdrant.Distance_Cosine,
+				},
+			},
+		),
+		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
+			map[string]*qdrant.SparseVectorParams{
+				"sparse": {
+					Modifier: qdrant.Modifier_Idf.Enum(),
+				},
+			},
+		),
 	})
 	if err != nil {
 		slog.Error("error creating documents collection", slog.Any("err", err))
@@ -224,10 +332,19 @@ func GenerateCollections(r *Rag) {
 
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "audio_logs",
-		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     1024,
-			Distance: qdrant.Distance_Cosine,
-		}),
+		VectorsConfig: qdrant.NewVectorsConfigMap(
+			map[string]*qdrant.VectorParams{
+				"dense": {
+					Size:     1024,
+					Distance: qdrant.Distance_Cosine,
+				},
+			},
+		),
+		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
+			map[string]*qdrant.SparseVectorParams{
+				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
+			},
+		),
 	})
 	if err != nil {
 		fmt.Println("error creating audio logs collection")
@@ -237,10 +354,19 @@ func GenerateCollections(r *Rag) {
 
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "notes",
-		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     1024,
-			Distance: qdrant.Distance_Cosine,
-		}),
+		VectorsConfig: qdrant.NewVectorsConfigMap(
+			map[string]*qdrant.VectorParams{
+				"dense": {
+					Size:     1024,
+					Distance: qdrant.Distance_Cosine,
+				},
+			},
+		),
+		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
+			map[string]*qdrant.SparseVectorParams{
+				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
+			},
+		),
 	})
 	if err != nil {
 		slog.Error("error creating notes collection", slog.Any("err", err))
@@ -262,7 +388,7 @@ type EmbeddingResponse struct {
 }
 
 func getEmbedding(text string) ([]float32, error) {
-	reqBody := EmbeddingRequest{Model: "qwen3-embedding:0.6b", Options: Options{Dimensions: 1024}, Prompt: text}
+	reqBody := EmbeddingRequest{Model: "mxbai-embed-large", Options: Options{Dimensions: 1024}, Prompt: text}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		slog.Error("failed to marshal request", slog.Any("err", err))
@@ -299,47 +425,3 @@ func getEmbedding(text string) ([]float32, error) {
 	slog.Info(fmt.Sprintf("%d", (len(embeddingResp.Embedding))))
 	return embeddingResp.Embedding, nil
 }
-
-// func newEmbedder() *embedder {
-// 	// TODO: need to fix the pathing for loading env
-// 	err := godotenv.Load()
-// 	if err != nil {
-// 		slog.Error("error loading .env")
-// 		wd, _ := os.Getwd()
-// 		fmt.Printf("Current working directory: %s\n", wd)
-// 		panic(err)
-// 	}
-// 	llm, err := huggingface.New(
-// 		huggingface.WithModel("sentence-transformers/all-MiniLM-L6-v2"),
-// 		huggingface.WithToken(os.Getenv("HF_TOKEN")),
-// 		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
-// 	)
-// 	if err != nil {
-// 		// fmt.Println("error getting llm client")
-// 		slog.Error("error getting llm client")
-// 		panic(err)
-// 	}
-//
-// 	return &embedder{
-// 		llm: llm,
-// 	}
-// }
-
-// type embedder struct {
-// 	llm *huggingface.LLM
-// }
-//
-// func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
-// 	vectors, err := e.llm.CreateEmbedding(
-// 		ctx,
-// 		texts,
-// 		"sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
-// 		"",
-// 	)
-// 	if err != nil {
-// 		slog.Error("error generating embedding", slog.Any("err", err))
-// 		return nil, err
-// 	}
-//
-// 	return vectors, nil
-//

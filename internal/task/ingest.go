@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"mime/multipart"
 
 	"github.com/hibiken/asynq"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
@@ -13,7 +14,8 @@ import (
 type (
 	IngestPayload struct {
 		Fid          string
-		Text         string
+		Header       *multipart.FileHeader
+		Text         []byte
 		Title        *string
 		UploadDate   *string
 		CreationDate *string
@@ -35,6 +37,7 @@ func (h *IngestHandler) Handle(ctx context.Context, t *asynq.Task) error {
 	slog.Info("calling rag store document")
 	if err := h.Rag.StoreDocument(
 		p.Text,
+		p.Header,
 		p.Fid,
 		p.Title,
 		p.UploadDate,
