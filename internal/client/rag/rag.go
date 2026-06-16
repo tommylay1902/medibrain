@@ -308,13 +308,19 @@ func GenerateCollections(r *Rag) {
 	}
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "documents",
-		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     1024,
-			Distance: qdrant.Distance_Cosine,
-		}),
+		VectorsConfig: qdrant.NewVectorsConfigMap(
+			map[string]*qdrant.VectorParams{
+				"dense": {
+					Size:     1024,
+					Distance: qdrant.Distance_Cosine,
+				},
+			},
+		),
 		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
 			map[string]*qdrant.SparseVectorParams{
-				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
+				"sparse": {
+					Modifier: qdrant.Modifier_Idf.Enum(),
+				},
 			},
 		),
 	})
@@ -325,10 +331,14 @@ func GenerateCollections(r *Rag) {
 
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "audio_logs",
-		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     1024,
-			Distance: qdrant.Distance_Cosine,
-		}),
+		VectorsConfig: qdrant.NewVectorsConfigMap(
+			map[string]*qdrant.VectorParams{
+				"dense": {
+					Size:     1024,
+					Distance: qdrant.Distance_Cosine,
+				},
+			},
+		),
 		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
 			map[string]*qdrant.SparseVectorParams{
 				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
@@ -343,10 +353,14 @@ func GenerateCollections(r *Rag) {
 
 	err = r.qClient.CreateCollection(context.Background(), &qdrant.CreateCollection{
 		CollectionName: "notes",
-		VectorsConfig: qdrant.NewVectorsConfig(&qdrant.VectorParams{
-			Size:     1024,
-			Distance: qdrant.Distance_Cosine,
-		}),
+		VectorsConfig: qdrant.NewVectorsConfigMap(
+			map[string]*qdrant.VectorParams{
+				"dense": {
+					Size:     1024,
+					Distance: qdrant.Distance_Cosine,
+				},
+			},
+		),
 		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
 			map[string]*qdrant.SparseVectorParams{
 				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
