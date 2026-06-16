@@ -35,7 +35,7 @@ func (h *IngestHandler) Handle(ctx context.Context, t *asynq.Task) error {
 		return err
 	}
 	slog.Info("calling rag store document")
-	if err := h.Rag.StoreDocumentTest(
+	if err := h.Rag.StoreDocument(
 		p.Text,
 		p.Header,
 		p.Fid,

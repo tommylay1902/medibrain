@@ -49,7 +49,7 @@ func NewRag(llm *ollama.LLM, pydocument *client.Pydocument) *Rag {
 	}
 }
 
-func (r *Rag) StoreDocumentTest(pdfBytes []byte, header *multipart.FileHeader, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
+func (r *Rag) StoreDocument(pdfBytes []byte, header *multipart.FileHeader, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
 	slog.Info(header.Filename)
 	docTitle := ""
 	if title != nil {
@@ -89,8 +89,11 @@ func (r *Rag) StoreDocumentTest(pdfBytes []byte, header *multipart.FileHeader, f
 		})
 
 		points = append(points, &qdrant.PointStruct{
-			Id:      qdrant.NewID(uuid.NewString()),
-			Vectors: qdrant.NewVectors(vec...),
+			Id: qdrant.NewID(uuid.NewString()),
+			Vectors: qdrant.NewVectorsMap(map[string]*qdrant.Vector{
+				"dense":  qdrant.NewVector(vec...),
+				"sparse": qdrant.NewVectorDocument(&qdrant.Document{Text: chunk.Text, Model: "qdrant/bm25"}),
+			}),
 			Payload: payload,
 		})
 	}
@@ -103,53 +106,6 @@ func (r *Rag) StoreDocumentTest(pdfBytes []byte, header *multipart.FileHeader, f
 		slog.Error("error upserting chunk into qdrant", slog.Any("err", err))
 		return err
 	}
-	return nil
-}
-
-func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
-	docTitle := ""
-	if title != nil {
-		docTitle = *title
-	}
-	docUploadDate := ""
-	if uploadDate != nil {
-		docUploadDate = *uploadDate
-	}
-
-	docCreationDate := ""
-	if creationDate != nil {
-		docCreationDate = *creationDate
-	}
-	document := schema.Document{
-		PageContent: doc,
-	}
-	chunks, _ := r.splitter.SplitText(document.PageContent)
-	points := make([]*qdrant.PointStruct, 0, len(chunks))
-	for _, chunk := range chunks {
-		vec, err := getEmbedding(chunk)
-		if err != nil {
-			slog.Error(err.Error())
-			continue
-		}
-		payload := qdrant.NewValueMap(map[string]any{
-			"fid":          fid,
-			"title":        docTitle,
-			"content":      chunk,
-			"uploadDate":   docUploadDate,
-			"creationDate": docCreationDate,
-			"keywords":     keywords,
-		})
-		points = append(points, &qdrant.PointStruct{Id: qdrant.NewID(uuid.NewString()), Vectors: qdrant.NewVectors(vec...), Payload: payload})
-	}
-	_, err := r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
-		CollectionName: "documents",
-		Points:         points,
-	})
-	if err != nil {
-		slog.Error("error upserting chunk into qdrant", slog.Any("err", err))
-		return err
-	}
-
 	return nil
 }
 
@@ -199,8 +155,24 @@ func (r *Rag) GetChunksByQuery(query string) ([]Response, string) {
 	}
 	results, err := r.qClient.Query(context.Background(), &qdrant.QueryPoints{
 		CollectionName: "documents",
-		Query:          qdrant.NewQuery(vec...),
-		WithPayload:    qdrant.NewWithPayload(true),
+		Prefetch: []*qdrant.PrefetchQuery{
+			{
+				Query: qdrant.NewQuery(vec...),
+				Using: qdrant.PtrOf("dense"),
+				Limit: qdrant.PtrOf(uint64(20)),
+			},
+			{
+				Query: qdrant.NewQueryDocument(&qdrant.Document{
+					Text:  query,
+					Model: "qdrant/bm25",
+				}),
+				Using: qdrant.PtrOf("sparse"),
+				Limit: qdrant.PtrOf(uint64(20)),
+			},
+		},
+		Query:       qdrant.NewQueryFusion(qdrant.Fusion_RRF),
+		WithPayload: qdrant.NewWithPayload(true),
+		Limit:       qdrant.PtrOf(uint64(10)),
 	})
 	if err != nil {
 		slog.Error("error getting chunk by query", slog.Any("err", err))
@@ -340,6 +312,11 @@ func GenerateCollections(r *Rag) {
 			Size:     1024,
 			Distance: qdrant.Distance_Cosine,
 		}),
+		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
+			map[string]*qdrant.SparseVectorParams{
+				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
+			},
+		),
 	})
 	if err != nil {
 		slog.Error("error creating documents collection", slog.Any("err", err))
@@ -352,6 +329,11 @@ func GenerateCollections(r *Rag) {
 			Size:     1024,
 			Distance: qdrant.Distance_Cosine,
 		}),
+		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
+			map[string]*qdrant.SparseVectorParams{
+				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
+			},
+		),
 	})
 	if err != nil {
 		fmt.Println("error creating audio logs collection")
@@ -365,6 +347,11 @@ func GenerateCollections(r *Rag) {
 			Size:     1024,
 			Distance: qdrant.Distance_Cosine,
 		}),
+		SparseVectorsConfig: qdrant.NewSparseVectorsConfig(
+			map[string]*qdrant.SparseVectorParams{
+				"sparse": {Modifier: qdrant.Modifier_Idf.Enum()},
+			},
+		),
 	})
 	if err != nil {
 		slog.Error("error creating notes collection", slog.Any("err", err))
@@ -423,47 +410,3 @@ func getEmbedding(text string) ([]float32, error) {
 	slog.Info(fmt.Sprintf("%d", (len(embeddingResp.Embedding))))
 	return embeddingResp.Embedding, nil
 }
-
-// func newEmbedder() *embedder {
-// 	// TODO: need to fix the pathing for loading env
-// 	err := godotenv.Load()
-// 	if err != nil {
-// 		slog.Error(yerror loading .env")
-// 		wd, _ := os.Getwd()
-// 		fmt.Printf("Current working directory: %s\n", wd)
-// 		panic(err)
-// 	}
-// 	llm, err := huggingface.New(
-// 		huggingface.WithModel("sentence-transformers/all-MiniLM-L6-v2"),
-// 		huggingface.WithToken(os.Getenv("HF_TOKEN")),
-// 		huggingface.WithURL("https://router.huggingface.co/hf-inference"),
-// 	)
-// 	if err != nil {
-// 		// fmt.Println("error getting llm client")
-// 		slog.Error("error getting llm client")
-// 		panic(err)
-// 	}
-//
-// 	return &embedder{
-// 		llm: llm,
-// 	}
-// }
-
-// type embedder struct {
-// 	llm *huggingface.LLM
-// }
-//
-// func (e *embedder) GenerateEmbedding(ctx context.Context, texts []string) ([][]float32, error) {
-// 	vectors, err := e.llm.CreateEmbedding(
-// 		ctx,
-// 		texts,
-// 		"sentence-transformers/all-MiniLM-L6-v2/pipeline/feature-extraction",
-// 		"",
-// 	)
-// 	if err != nil {
-// 		slog.Error("error generating embedding", slog.Any("err", err))
-// 		return nil, err
-// 	}
-//
-// 	return vectors, nil
-//

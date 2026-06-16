@@ -8,6 +8,7 @@ services:
       dockerfile: Dockerfile
     networks:
       - app-network
+    restart: unless-stopped
 networks:
   app-network:
     name: medibrain_app-network
