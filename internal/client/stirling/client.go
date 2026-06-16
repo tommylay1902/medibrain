@@ -80,6 +80,7 @@ func (sc *StirlingClient) GetTextFromPdf(pdfBytes []byte, header *multipart.File
 		slog.Error(fmt.Sprintf("expected status code 200, actual status code: %v", resp.StatusCode))
 		return nil, errors.New("not expected status code")
 	}
+
 	result := string(respBody)
 	return &result, nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/tommylay1902/medibrain/internal/api/domain/job"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
 	"github.com/tommylay1902/medibrain/internal/api/domain/note"
+	client "github.com/tommylay1902/medibrain/internal/client/pydocument"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
@@ -22,14 +23,16 @@ func main() {
 	slog.SetDefault(logger)
 
 	llm, err := ollama.New(
-		ollama.WithModel("llama3.2:1b"),
+		ollama.WithModel("llama3.2:9b"),
 		ollama.WithServerURL("http://ollama:11434"),
 	)
 	if err != nil {
 		slog.Error(err.Error())
 		panic(err)
 	}
-	rag := rag.NewRag(llm)
+
+	pydc := client.NewPydocument()
+	rag := rag.NewRag(llm, pydc)
 	db := database.NewDB()
 	uowFactory := database.NewUnitOfWorkFactory(db)
 	dmr := metadata.NewRepo(db)
@@ -49,7 +52,7 @@ func main() {
 	defer asynqInspector.Close()
 	js := job.NewJobService(asynqInspector)
 
-	dps := document.NewService(dmr, swc, sc, dms, rag, asynqClient)
+	dps := document.NewService(dmr, swc, sc, dms, rag, asynqClient, pydc)
 
 	mux := api.NewMux(dms, dps, ns, js)
 

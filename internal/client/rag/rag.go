@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -18,15 +19,17 @@ import (
 	"github.com/tmc/langchaingo/prompts"
 	"github.com/tmc/langchaingo/schema"
 	"github.com/tmc/langchaingo/textsplitter"
+	client "github.com/tommylay1902/medibrain/internal/client/pydocument"
 )
 
 type Rag struct {
-	llm      *ollama.LLM
-	qClient  *qdrant.Client
-	splitter *textsplitter.RecursiveCharacter
+	llm        *ollama.LLM
+	qClient    *qdrant.Client
+	splitter   *textsplitter.RecursiveCharacter
+	pydocument *client.Pydocument
 }
 
-func NewRag(llm *ollama.LLM) *Rag {
+func NewRag(llm *ollama.LLM, pydocument *client.Pydocument) *Rag {
 	client, err := qdrant.NewClient(&qdrant.Config{
 		Host: "qdrant",
 		Port: 6334,
@@ -39,14 +42,71 @@ func NewRag(llm *ollama.LLM) *Rag {
 	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(1000), textsplitter.WithChunkOverlap(200))
 
 	return &Rag{
-		llm:      llm,
-		qClient:  client,
-		splitter: &splitter,
+		llm:        llm,
+		qClient:    client,
+		splitter:   &splitter,
+		pydocument: pydocument,
 	}
 }
 
+func (r *Rag) StoreDocumentTest(pdfBytes []byte, header *multipart.FileHeader, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
+	slog.Info(header.Filename)
+	docTitle := ""
+	if title != nil {
+		docTitle = *title
+	}
+	docUploadDate := ""
+	if uploadDate != nil {
+		docUploadDate = *uploadDate
+	}
+	docCreationDate := ""
+	if creationDate != nil {
+		docCreationDate = *creationDate
+	}
+
+	splitResponse, err := r.pydocument.GetDocumentSplits(pdfBytes, header)
+	if err != nil {
+		slog.Error("error getting document splits", slog.Any("err", err))
+		return err
+	}
+
+	points := make([]*qdrant.PointStruct, 0, len(splitResponse.Chunks))
+	for _, chunk := range splitResponse.Chunks {
+		vec, err := getEmbedding(chunk.Text)
+		if err != nil {
+			slog.Error(err.Error())
+			continue
+		}
+		payload := qdrant.NewValueMap(map[string]any{
+			"fid":          fid,
+			"title":        docTitle,
+			"page":         chunk.Page,
+			"filename":     header.Filename,
+			"content":      chunk.Text,
+			"uploadDate":   docUploadDate,
+			"creationDate": docCreationDate,
+			"keywords":     keywords,
+		})
+
+		points = append(points, &qdrant.PointStruct{
+			Id:      qdrant.NewID(uuid.NewString()),
+			Vectors: qdrant.NewVectors(vec...),
+			Payload: payload,
+		})
+	}
+
+	_, err = r.qClient.Upsert(context.Background(), &qdrant.UpsertPoints{
+		CollectionName: "documents",
+		Points:         points,
+	})
+	if err != nil {
+		slog.Error("error upserting chunk into qdrant", slog.Any("err", err))
+		return err
+	}
+	return nil
+}
+
 func (r *Rag) StoreDocument(doc string, fid string, title *string, uploadDate *string, creationDate *string, keywords string) error {
-	slog.Info("entering store document")
 	docTitle := ""
 	if title != nil {
 		docTitle = *title

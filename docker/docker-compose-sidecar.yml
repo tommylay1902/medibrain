@@ -1,0 +1,13 @@
+services:
+  pydocument-server:
+    container_name: pydocument-server
+    ports:
+      - 8010:8000
+    build:
+      context: ../sidecar/pdf-ingestion
+      dockerfile: Dockerfile
+    networks:
+      - app-network
+networks:
+  app-network:
+    name: medibrain_app-network

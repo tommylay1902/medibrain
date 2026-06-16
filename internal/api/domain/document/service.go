@@ -9,6 +9,7 @@ import (
 
 	"github.com/hibiken/asynq"
 	"github.com/tommylay1902/medibrain/internal/api/domain/metadata"
+	client "github.com/tommylay1902/medibrain/internal/client/pydocument"
 	"github.com/tommylay1902/medibrain/internal/client/rag"
 	seaweedclient "github.com/tommylay1902/medibrain/internal/client/seaweed"
 	"github.com/tommylay1902/medibrain/internal/client/stirling"
@@ -22,6 +23,7 @@ type DocumentPipelineService struct {
 	dms            *metadata.MetadataService
 	ragClient      *rag.Rag
 	asynqTask      *asynq.Client
+	pydocument     *client.Pydocument
 }
 
 func NewService(
@@ -31,6 +33,7 @@ func NewService(
 	dms *metadata.MetadataService,
 	ragClient *rag.Rag,
 	asynqTask *asynq.Client,
+	pydocument *client.Pydocument,
 ) *DocumentPipelineService {
 	return &DocumentPipelineService{
 		dmRepo:         dmRepo,
@@ -39,6 +42,7 @@ func NewService(
 		dms:            dms,
 		ragClient:      ragClient,
 		asynqTask:      asynqTask,
+		pydocument:     pydocument,
 	}
 }
 
@@ -187,10 +191,10 @@ func (dps *DocumentPipelineService) cleanupResources(publicURL string, fids ...s
 }
 
 func (dps *DocumentPipelineService) ChunkAndUploadText(pdfBytes []byte, header *multipart.FileHeader, apiKey string, fid string) (string, error) {
-	textBody, err := dps.stirlingClient.GetTextFromPdf(pdfBytes, header, apiKey)
-	if err != nil || textBody == nil {
-		return "", fmt.Errorf("stirling get text: %w", err)
-	}
+	// textBody, err := dps.stirlingClient.GetTextFromPdf(pdfBytes, header, apiKey)
+	// if err != nil || textBody == nil {
+	// 	return "", fmt.Errorf("stirling get text: %w", err)
+	// }
 
 	dm, err := dps.stirlingClient.GetMetaData(pdfBytes, header, apiKey)
 	if err != nil {
@@ -199,7 +203,8 @@ func (dps *DocumentPipelineService) ChunkAndUploadText(pdfBytes []byte, header *
 
 	payload, err := json.Marshal(task.IngestPayload{
 		Fid:          fid,
-		Text:         *textBody,
+		Text:         pdfBytes,
+		Header:       header,
 		Title:        dm.Title,
 		CreationDate: dm.CreationDate,
 		UploadDate:   dm.ModificationDate,
