@@ -39,12 +39,9 @@ func NewRag(llm *ollama.LLM, pydocument *client.Pydocument) *Rag {
 		panic(err)
 	}
 
-	splitter := textsplitter.NewRecursiveCharacter(textsplitter.WithChunkSize(1000), textsplitter.WithChunkOverlap(200))
-
 	return &Rag{
 		llm:        llm,
 		qClient:    client,
-		splitter:   &splitter,
 		pydocument: pydocument,
 	}
 }
@@ -55,10 +52,12 @@ func (r *Rag) StoreDocument(pdfBytes []byte, header *multipart.FileHeader, fid s
 	if title != nil {
 		docTitle = *title
 	}
+
 	docUploadDate := ""
 	if uploadDate != nil {
 		docUploadDate = *uploadDate
 	}
+
 	docCreationDate := ""
 	if creationDate != nil {
 		docCreationDate = *creationDate
@@ -170,7 +169,9 @@ func (r *Rag) GetChunksByQuery(query string) ([]Response, string) {
 				Limit: qdrant.PtrOf(uint64(20)),
 			},
 		},
-		Query:       qdrant.NewQueryFusion(qdrant.Fusion_RRF),
+		Query: qdrant.NewQueryRRF(&qdrant.Rrf{
+			Weights: []float32{1.0, 1.0},
+		}),
 		WithPayload: qdrant.NewWithPayload(true),
 		Limit:       qdrant.PtrOf(uint64(10)),
 	})
@@ -387,7 +388,7 @@ type EmbeddingResponse struct {
 }
 
 func getEmbedding(text string) ([]float32, error) {
-	reqBody := EmbeddingRequest{Model: "qwen3-embedding:0.6b", Options: Options{Dimensions: 1024}, Prompt: text}
+	reqBody := EmbeddingRequest{Model: "mxbai-embed-large", Options: Options{Dimensions: 1024}, Prompt: text}
 	jsonBody, err := json.Marshal(reqBody)
 	if err != nil {
 		slog.Error("failed to marshal request", slog.Any("err", err))

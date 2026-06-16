@@ -45,7 +45,9 @@ tear-down:
 	@echo "Tearing down docker application"
 	docker compose -f docker/docker-compose.yml down -v
 
-start-up:
+start-up: up data-init
+
+up:
 	@echo "Staring up docker application"
 	docker compose -f docker/docker-compose.yml up -d
 

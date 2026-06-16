@@ -10,7 +10,7 @@ import (
 
 func main() {
 	llm, err := ollama.New(
-		ollama.WithModel("gemma3:4b"),
+		ollama.WithModel("medgemma:4b"),
 		ollama.WithServerURL("http://ollama:11434"),
 	)
 	if err != nil {

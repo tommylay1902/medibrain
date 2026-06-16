@@ -4,9 +4,8 @@ go 1.25.5
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/hibiken/asynq v0.26.0
 	github.com/jmoiron/sqlx v1.4.0
-	github.com/joho/godotenv v1.5.1
-	github.com/ledongthuc/pdf v0.0.0-20220302134840-0c2507a12d80
 	github.com/lib/pq v1.10.9
 	github.com/qdrant/go-client v1.18.2
 	github.com/tmc/langchaingo v0.1.14
@@ -18,13 +17,10 @@ require (
 	github.com/Masterminds/semver/v3 v3.5.0 // indirect
 	github.com/Masterminds/sprig/v3 v3.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
-	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/dlclark/regexp2 v1.12.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/goph/emperror v0.17.2 // indirect
-	github.com/hibiken/asynq v0.26.0 // indirect
 	github.com/huandu/xstrings v1.5.0 // indirect
-	github.com/imdario/mergo v0.3.16 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
